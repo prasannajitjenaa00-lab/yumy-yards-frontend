@@ -151,6 +151,20 @@ export default function Menu() {
     });
   };
 
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        return toast.error("Image file size should be less than 5MB");
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm((prev) => ({ ...prev, imageUrl: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!form.name || !form.category || !form.price) {
@@ -166,6 +180,7 @@ export default function Menu() {
         foodType: form.foodType,
         isAvailable: form.isAvailable,
         imageUrl: form.imageUrl,
+        image: form.imageUrl,
       };
 
       if (editingId) {
@@ -595,17 +610,51 @@ export default function Menu() {
             <form onSubmit={handleSave} className="space-y-4 text-xs">
               {activeTab === "basic" ? (
                 <>
-                  {/* Image Upload Box */}
+                  {/* Image Upload / URL Box */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1.5">Food Image URL</label>
-                    <div className="border-2 border-dashed border-slate-200 hover:border-orange-400 rounded-2xl p-4 text-center bg-slate-50/50 cursor-pointer transition-colors">
-                      <ImageIcon size={24} className="text-slate-400 mx-auto mb-1.5" />
-                      <div className="font-semibold text-slate-700">Upload Food Image</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Enter URL below or paste link</div>
-                    </div>
+                    <label className="block font-semibold text-slate-700 mb-1.5">Food Image</label>
+                    {form.imageUrl ? (
+                      <div className="relative group rounded-2xl overflow-hidden border border-slate-200 h-36 bg-slate-100 mb-2">
+                        <img
+                          src={form.imageUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, imageUrl: "" })}
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/70 text-white hover:bg-rose-600 transition-colors shadow-md cursor-pointer"
+                          title="Remove image"
+                        >
+                          <X size={14} />
+                        </button>
+                        <div className="absolute bottom-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded-md font-medium">
+                          Image Preview
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="menu-image-upload"
+                        className="border-2 border-dashed border-slate-200 hover:border-orange-400 rounded-2xl p-4 text-center bg-slate-50/50 cursor-pointer transition-colors block"
+                      >
+                        <Upload size={24} className="text-slate-400 mx-auto mb-1.5" />
+                        <div className="font-semibold text-slate-700">Upload or Select Image</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">Click to choose a file or paste URL below</div>
+                      </label>
+                    )}
+                    <input
+                      id="menu-image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageFileChange}
+                    />
                     <input
                       type="text"
-                      placeholder="https://images.unsplash.com/..."
+                      placeholder="Or paste image URL (e.g. https://images.unsplash.com/...)"
                       className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:bg-white focus:outline-none mt-2 font-medium"
                       value={form.imageUrl}
                       onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
