@@ -353,11 +353,10 @@ export default function Menu() {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-thin scrollbar-thumb-slate-200">
           <button
             onClick={() => setActiveCategory("ALL")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-              activeCategory === "ALL"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${activeCategory === "ALL"
                 ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
                 : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-            }`}
+              }`}
           >
             <LayoutGrid size={15} />
             <span>All Items</span>
@@ -370,11 +369,10 @@ export default function Menu() {
               <button
                 key={c._id}
                 onClick={() => setActiveCategory(c._id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                  isActive
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${isActive
                     ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
                     : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 <Icon size={15} />
                 <span>{c.name}</span>
@@ -399,21 +397,19 @@ export default function Menu() {
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded-lg transition-colors ${
-                viewMode === "grid"
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === "grid"
                   ? "bg-orange-500 text-white shadow-2xs"
                   : "text-slate-500 hover:text-slate-800"
-              }`}
+                }`}
             >
               <LayoutGrid size={15} />
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-lg transition-colors ${
-                viewMode === "list"
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === "list"
                   ? "bg-orange-500 text-white shadow-2xs"
                   : "text-slate-500 hover:text-slate-800"
-              }`}
+                }`}
             >
               <List size={15} />
             </button>
@@ -435,9 +431,8 @@ export default function Menu() {
                 return (
                   <div
                     key={item._id}
-                    className={`bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group ${
-                      !isAvailable ? "opacity-60" : ""
-                    }`}
+                    className={`bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group ${!isAvailable ? "opacity-60" : ""
+                      }`}
                   >
                     {/* Top Image Container */}
                     <div className="relative h-36 w-full bg-slate-100 overflow-hidden">
@@ -586,22 +581,20 @@ export default function Menu() {
               <button
                 type="button"
                 onClick={() => setActiveTab("basic")}
-                className={`py-2 px-3 border-b-2 transition-colors ${
-                  activeTab === "basic"
+                className={`py-2 px-3 border-b-2 transition-colors ${activeTab === "basic"
                     ? "border-orange-500 text-orange-600"
                     : "border-transparent text-slate-400 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 Basic Info
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("additional")}
-                className={`py-2 px-3 border-b-2 transition-colors ${
-                  activeTab === "additional"
+                className={`py-2 px-3 border-b-2 transition-colors ${activeTab === "additional"
                     ? "border-orange-500 text-orange-600"
                     : "border-transparent text-slate-400 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 Additional Info
               </button>
@@ -763,14 +756,12 @@ export default function Menu() {
                     <button
                       type="button"
                       onClick={() => setForm({ ...form, isAvailable: !form.isAvailable })}
-                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
-                        form.isAvailable ? "bg-orange-500" : "bg-slate-300"
-                      }`}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${form.isAvailable ? "bg-orange-500" : "bg-slate-300"
+                        }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                          form.isAvailable ? "translate-x-5" : "translate-x-0"
-                        }`}
+                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${form.isAvailable ? "translate-x-5" : "translate-x-0"
+                          }`}
                       />
                     </button>
                   </div>

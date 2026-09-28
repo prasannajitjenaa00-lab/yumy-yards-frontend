@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 import {
@@ -15,6 +16,7 @@ import {
   Activity,
   ChevronRight,
   ChevronLeft,
+  Clock,
 } from "lucide-react";
 
 const ROLES = ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"];
@@ -162,12 +164,14 @@ export default function Staff() {
           </div>
         </div>
 
-        {/* Right Side Card Accent */}
-        <div className="hidden md:block relative z-10">
-          <div className="bg-orange-50/80 border border-orange-100 px-3.5 py-1.5 rounded-xl text-xs text-slate-800">
-            <div className="font-extrabold">Happy Staff</div>
-            <div className="text-[10px] font-bold text-orange-600">Better Food • Happier Customers</div>
-          </div>
+        {/* Right Side Action */}
+        <div className="flex items-center gap-3 relative z-10">
+          <Link
+            to="/staff/attendance"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-md transition-all active:scale-95"
+          >
+            <Clock size={15} className="text-orange-400" /> Attendance & Shifts
+          </Link>
         </div>
       </div>
 

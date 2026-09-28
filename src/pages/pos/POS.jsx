@@ -228,11 +228,10 @@ export default function POS() {
           {/* ALL Button */}
           <button
             onClick={() => setActiveCategory("ALL")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-              activeCategory === "ALL"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${activeCategory === "ALL"
                 ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
                 : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-            }`}
+              }`}
           >
             <LayoutGrid size={15} />
             <span>All</span>
@@ -246,11 +245,10 @@ export default function POS() {
               <button
                 key={c._id}
                 onClick={() => setActiveCategory(c._id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                  isActive
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${isActive
                     ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
                     : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 <Icon size={15} />
                 <span>{c.name}</span>
@@ -269,9 +267,8 @@ export default function POS() {
             return (
               <div
                 key={item._id}
-                className={`bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group ${
-                  !isAvailable ? "opacity-60" : ""
-                }`}
+                className={`bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group ${!isAvailable ? "opacity-60" : ""
+                  }`}
               >
                 {/* Product Image & Favorite Toggle */}
                 <div className="relative h-36 w-full bg-slate-100 overflow-hidden">
@@ -375,11 +372,10 @@ export default function POS() {
               <button
                 key={t.id}
                 onClick={() => dispatch(setOrderType(t.id))}
-                className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                  isSelected
+                className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all ${isSelected
                     ? "bg-orange-500 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                }`}
+                  }`}
               >
                 <Icon size={14} />
                 <span className="truncate">{t.label}</span>

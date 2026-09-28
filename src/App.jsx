@@ -24,6 +24,9 @@ import Suppliers from "./pages/purchases/Suppliers";
 import Customers from "./pages/customers/Customers";
 import Staff from "./pages/staff/Staff";
 import Attendance from "./pages/staff/Attendance";
+import HolidayManagement from "./pages/staff/HolidayManagement";
+import LeaveDashboard from "./pages/staff/LeaveDashboard";
+import AdminLeaveManagement from "./pages/staff/AdminLeaveManagement";
 import Expenses from "./pages/expenses/Expenses";
 import Payments from "./pages/payments/Payments";
 import Reports from "./pages/reports/Reports";
@@ -72,6 +75,14 @@ export default function App() {
             <Route path="/waiter/orders" element={<Orders />} />
             <Route path="/orders/:id" element={<OrderDetails />} />
             <Route path="/tables" element={<Tables />} />
+            <Route path="/staff/attendance" element={<Attendance />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/employee/dashboard" element={<Attendance />} />
+            <Route path="/staff/leave" element={<LeaveDashboard />} />
+            <Route path="/leave" element={<LeaveDashboard />} />
+            <Route path="/my-leave" element={<LeaveDashboard />} />
+            <Route path="/staff/holidays" element={<HolidayManagement />} />
+            <Route path="/holidays" element={<HolidayManagement />} />
           </Route>
 
           <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "KITCHEN"]} />}>
@@ -84,7 +95,9 @@ export default function App() {
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/purchases/suppliers" element={<Suppliers />} />
             <Route path="/staff" element={<Staff />} />
-            <Route path="/staff/attendance" element={<Attendance />} />
+            <Route path="/staff/leave-management" element={<AdminLeaveManagement />} />
+            <Route path="/admin/leaves" element={<AdminLeaveManagement />} />
+            <Route path="/leaves" element={<AdminLeaveManagement />} />
             <Route path="/reports" element={<Reports />} />
           </Route>
 

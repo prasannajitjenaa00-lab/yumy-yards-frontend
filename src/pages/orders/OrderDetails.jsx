@@ -111,7 +111,7 @@ export default function OrderDetails() {
     try {
       const setRes = await api.get("/settings");
       setRestaurantSettings(setRes.data.data);
-    } catch (err) {}
+    } catch (err) { }
   };
 
   useEffect(() => {
@@ -459,23 +459,20 @@ export default function OrderDetails() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Order Details</h1>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                  ORDER_STATUS_BADGES[order.orderStatus] || "bg-slate-100 text-slate-700"
-                }`}
+                className={`px-3 py-1 rounded-full text-xs font-bold border ${ORDER_STATUS_BADGES[order.orderStatus] || "bg-slate-100 text-slate-700"
+                  }`}
               >
                 {order.orderStatus}
               </span>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                  PAYMENT_STATUS_BADGES[order.paymentStatus] || "bg-slate-100 text-slate-700"
-                }`}
+                className={`px-3 py-1 rounded-full text-xs font-bold border ${PAYMENT_STATUS_BADGES[order.paymentStatus] || "bg-slate-100 text-slate-700"
+                  }`}
               >
                 {order.paymentStatus}
               </span>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                  BILL_STATUS_BADGES[effectiveBillStatus]
-                }`}
+                className={`px-3 py-1 rounded-full text-xs font-bold border ${BILL_STATUS_BADGES[effectiveBillStatus]
+                  }`}
               >
                 BILL: {effectiveBillStatus.replace("_", " ")}
               </span>
@@ -500,12 +497,12 @@ export default function OrderDetails() {
               <p className="text-[10px] text-slate-500">
                 {order.createdAt
                   ? new Date(order.createdAt).toLocaleString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                   : "—"}
               </p>
             </div>
@@ -574,12 +571,12 @@ export default function OrderDetails() {
                   <span className="font-semibold text-slate-800">
                     {order.createdAt
                       ? new Date(order.createdAt).toLocaleString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                       : "—"}
                   </span>
                 </div>
@@ -718,9 +715,8 @@ export default function OrderDetails() {
               {/* Step 1: Created */}
               <div className="space-y-1">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${
-                    isStep1Done ? "bg-emerald-500 text-white border-emerald-500" : "bg-slate-100 text-slate-400"
-                  }`}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep1Done ? "bg-emerald-500 text-white border-emerald-500" : "bg-slate-100 text-slate-400"
+                    }`}
                 >
                   <Check className="w-3.5 h-3.5" />
                 </div>
@@ -730,13 +726,12 @@ export default function OrderDetails() {
               {/* Step 2: KOT Sent */}
               <div className="space-y-1">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${
-                    isStep2Done
+                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep2Done
                       ? "bg-emerald-500 text-white border-emerald-500"
                       : order.orderStatus === "CONFIRMED"
-                      ? "bg-orange-500 text-white border-orange-500 animate-pulse"
-                      : "bg-slate-100 text-slate-400 border-slate-200"
-                  }`}
+                        ? "bg-orange-500 text-white border-orange-500 animate-pulse"
+                        : "bg-slate-100 text-slate-400 border-slate-200"
+                    }`}
                 >
                   {isStep2Done ? <Check className="w-3.5 h-3.5" /> : <span>2</span>}
                 </div>
@@ -748,11 +743,10 @@ export default function OrderDetails() {
               {/* Step 3: Accepted */}
               <div className="space-y-1">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${
-                    isStep3Done
+                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep3Done
                       ? "bg-emerald-500 text-white border-emerald-500"
                       : "bg-slate-100 text-slate-400 border-slate-200"
-                  }`}
+                    }`}
                 >
                   {isStep3Done ? <Check className="w-3.5 h-3.5" /> : <span>3</span>}
                 </div>
@@ -762,13 +756,12 @@ export default function OrderDetails() {
               {/* Step 4: Preparing */}
               <div className="space-y-1">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${
-                    isStep4Done
+                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep4Done
                       ? "bg-emerald-500 text-white border-emerald-500"
                       : order.orderStatus === "PREPARING"
-                      ? "bg-amber-500 text-white border-amber-500 animate-pulse"
-                      : "bg-slate-100 text-slate-400 border-slate-200"
-                  }`}
+                        ? "bg-amber-500 text-white border-amber-500 animate-pulse"
+                        : "bg-slate-100 text-slate-400 border-slate-200"
+                    }`}
                 >
                   {isStep4Done ? <Check className="w-3.5 h-3.5" /> : <span>4</span>}
                 </div>
@@ -780,13 +773,12 @@ export default function OrderDetails() {
               {/* Step 5: Ready */}
               <div className="space-y-1">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${
-                    isStep5Done
+                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep5Done
                       ? "bg-emerald-500 text-white border-emerald-500"
                       : order.orderStatus === "READY"
-                      ? "bg-emerald-500 text-white border-emerald-500 shadow-sm animate-bounce"
-                      : "bg-slate-100 text-slate-400 border-slate-200"
-                  }`}
+                        ? "bg-emerald-500 text-white border-emerald-500 shadow-sm animate-bounce"
+                        : "bg-slate-100 text-slate-400 border-slate-200"
+                    }`}
                 >
                   {isStep5Done || order.orderStatus === "READY" ? <Check className="w-3.5 h-3.5" /> : <span>5</span>}
                 </div>
@@ -798,11 +790,10 @@ export default function OrderDetails() {
               {/* Step 6: Served */}
               <div className="space-y-1">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${
-                    isStep6Done || order.orderStatus === "SERVED"
+                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep6Done || order.orderStatus === "SERVED"
                       ? "bg-teal-600 text-white border-teal-600"
                       : "bg-slate-100 text-slate-400 border-slate-200"
-                  }`}
+                    }`}
                 >
                   {isStep6Done || order.orderStatus === "SERVED" ? <Check className="w-3.5 h-3.5" /> : <span>6</span>}
                 </div>
@@ -899,11 +890,10 @@ export default function OrderDetails() {
                 <h3 className="text-sm font-bold text-slate-900">Table Status</h3>
               </div>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                  order.orderStatus === "COMPLETED"
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${order.orderStatus === "COMPLETED"
                     ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                     : "bg-amber-100 text-amber-800 border-amber-300"
-                }`}
+                  }`}
               >
                 {order.orderStatus === "COMPLETED" ? "🟢 AVAILABLE" : "🟠 OCCUPIED"}
               </span>
@@ -980,9 +970,8 @@ export default function OrderDetails() {
                 <h3 className="text-sm font-bold text-slate-900">Bill Status</h3>
               </div>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                  BILL_STATUS_BADGES[effectiveBillStatus]
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${BILL_STATUS_BADGES[effectiveBillStatus]
+                  }`}
               >
                 {effectiveBillStatus.replace("_", " ")}
               </span>
@@ -1076,9 +1065,8 @@ export default function OrderDetails() {
                 <h3 className="text-sm font-bold text-slate-900">Payment</h3>
               </div>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                  PAYMENT_STATUS_BADGES[order.paymentStatus] || "bg-slate-100 text-slate-700"
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${PAYMENT_STATUS_BADGES[order.paymentStatus] || "bg-slate-100 text-slate-700"
+                  }`}
               >
                 {order.paymentStatus}
               </span>

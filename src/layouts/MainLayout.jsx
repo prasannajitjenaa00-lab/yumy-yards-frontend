@@ -27,6 +27,10 @@
     ChevronRight,
     Flame,
     Utensils,
+    Clock,
+    CalendarDays,
+    CalendarOff,
+    Coffee,
   } from "lucide-react";
   import { clearCredentials } from "../store/slices/authSlice";
   import { logout as logoutApi } from "../services/authService";
@@ -44,6 +48,10 @@
       { to: "/purchases", label: "Purchases", icon: Truck },
       { to: "/customers", label: "Customers", icon: Users },
       { to: "/staff", label: "Staff", icon: UserCheck },
+      { to: "/staff/attendance", label: "Attendance", icon: Clock },
+      { to: "/staff/leave-management", label: "Leave Management", icon: CalendarOff },
+      { to: "/staff/leave", label: "My Leave", icon: Coffee },
+      { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
       { to: "/expenses", label: "Expenses", icon: Wallet },
       { to: "/reports", label: "Reports", icon: BarChart3 },
       { to: "/owner/settings", label: "Settings", icon: Settings },
@@ -60,6 +68,10 @@
       { to: "/purchases", label: "Purchases", icon: Truck },
       { to: "/customers", label: "Customers", icon: Users },
       { to: "/staff", label: "Staff", icon: UserCheck },
+      { to: "/staff/attendance", label: "Attendance", icon: Clock },
+      { to: "/staff/leave-management", label: "Leave Management", icon: CalendarOff },
+      { to: "/staff/leave", label: "My Leave", icon: Coffee },
+      { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
       { to: "/expenses", label: "Expenses", icon: Wallet },
       { to: "/reports", label: "Reports", icon: BarChart3 },
     ],
@@ -69,14 +81,23 @@
       { to: "/tables", label: "Tables", icon: Table2 },
       { to: "/customers", label: "Customers", icon: Users },
       { to: "/payments", label: "Payments", icon: Wallet },
+      { to: "/staff/attendance", label: "Attendance", icon: Clock },
+      { to: "/staff/leave", label: "My Leave", icon: Coffee },
+      { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
     ],
     WAITER: [
       { to: "/waiter/orders", label: "Orders", icon: ClipboardList },
       { to: "/tables", label: "Tables", icon: Table2 },
       { to: "/pos", label: "New Order", icon: UtensilsCrossed },
+      { to: "/staff/attendance", label: "Attendance", icon: Clock },
+      { to: "/staff/leave", label: "My Leave", icon: Coffee },
+      { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
     ],
     KITCHEN: [
       { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
+      { to: "/staff/attendance", label: "Attendance", icon: Clock },
+      { to: "/staff/leave", label: "My Leave", icon: Coffee },
+      { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
     ],
   };
 

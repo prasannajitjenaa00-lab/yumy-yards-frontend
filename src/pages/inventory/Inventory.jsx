@@ -8,17 +8,15 @@ import {
   Upload,
   AlertTriangle,
   XCircle,
-  ShoppingCart,
   ChevronRight,
   Pencil,
   Trash2,
   ChevronLeft,
-  Filter,
-  Layers,
   X,
-  SlidersHorizontal,
-  CheckCircle2,
   RefreshCw,
+  Calendar,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 
 const ITEM_IMAGES = {
@@ -51,6 +49,65 @@ function getItemCategory(name) {
   return "Others";
 }
 
+function getExpiryInfo(expiryDate) {
+  if (!expiryDate) return { status: "NONE", label: "No Expiry", days: null };
+  const exp = new Date(expiryDate);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  exp.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const formattedDate = exp.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+  if (diffDays < 0) {
+    return {
+      status: "EXPIRED",
+      label: `Expired (${Math.abs(diffDays)}d ago)`,
+      formattedDate,
+      days: diffDays,
+      badgeStyle: "bg-rose-100 text-rose-800 border-rose-300 font-bold",
+    };
+  } else if (diffDays === 0) {
+    return {
+      status: "EXPIRES_TODAY",
+      label: "Expires Today!",
+      formattedDate,
+      days: 0,
+      badgeStyle: "bg-red-100 text-red-800 border-red-300 font-bold animate-pulse",
+    };
+  } else if (diffDays <= 3) {
+    return {
+      status: "EXPIRING_CRITICAL",
+      label: `Expires in ${diffDays}d`,
+      formattedDate,
+      days: diffDays,
+      badgeStyle: "bg-amber-100 text-amber-800 border-amber-300 font-bold",
+    };
+  } else if (diffDays <= 7) {
+    return {
+      status: "EXPIRING_SOON",
+      label: `Expires in ${diffDays}d`,
+      formattedDate,
+      days: diffDays,
+      badgeStyle: "bg-yellow-100 text-yellow-800 border-yellow-300 font-semibold",
+    };
+  } else {
+    return {
+      status: "VALID",
+      label: formattedDate,
+      formattedDate,
+      days: diffDays,
+      badgeStyle: "bg-emerald-50 text-emerald-700 border-emerald-200 font-medium",
+    };
+  }
+}
+
+function addDaysToDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
 export default function Inventory() {
   const [items, setItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
@@ -65,7 +122,26 @@ export default function Inventory() {
 
   // Add Item Modal & Form
   const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ name: "", unit: "kg", minimumStock: 5, purchasePrice: 0, currentStock: 0 });
+  const [form, setForm] = useState({
+    name: "",
+    unit: "kg",
+    minimumStock: 5,
+    purchasePrice: 0,
+    currentStock: 0,
+    expiryDate: "",
+  });
+
+  // Edit Item Modal & Form
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    unit: "kg",
+    minimumStock: 5,
+    purchasePrice: 0,
+    currentStock: 0,
+    expiryDate: "",
+  });
 
   // Adjust Stock Modal & Form
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -95,13 +171,49 @@ export default function Inventory() {
         minimumStock: Number(form.minimumStock) || 0,
         purchasePrice: Number(form.purchasePrice) || 0,
         currentStock: Number(form.currentStock) || 0,
+        expiryDate: form.expiryDate ? new Date(form.expiryDate) : null,
       });
-      toast.success("Inventory item added");
-      setForm({ name: "", unit: "kg", minimumStock: 5, purchasePrice: 0, currentStock: 0 });
+      toast.success("Inventory product added with expiry date");
+      setForm({ name: "", unit: "kg", minimumStock: 5, purchasePrice: 0, currentStock: 0, expiryDate: "" });
       setShowAddModal(false);
       loadInventory();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to create item");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (item) => {
+    setEditingItem(item);
+    setEditForm({
+      name: item.name || "",
+      unit: item.unit || "kg",
+      minimumStock: item.minimumStock || 0,
+      purchasePrice: item.purchasePrice || 0,
+      currentStock: item.currentStock || 0,
+      expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString().split("T")[0] : "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.name || !editForm.unit) return toast.error("Item name and unit are required");
+    setSubmitting(true);
+    try {
+      await api.put(`/inventory/${editingItem._id}`, {
+        ...editForm,
+        minimumStock: Number(editForm.minimumStock) || 0,
+        purchasePrice: Number(editForm.purchasePrice) || 0,
+        currentStock: Number(editForm.currentStock) || 0,
+        expiryDate: editForm.expiryDate ? new Date(editForm.expiryDate) : null,
+      });
+      toast.success("Item updated successfully");
+      setShowEditModal(false);
+      loadInventory();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update item");
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +240,16 @@ export default function Inventory() {
   const totalItems = items.length;
   const lowStockItems = items.filter((i) => i.currentStock > 0 && i.currentStock <= i.minimumStock).length;
   const outOfStockItems = items.filter((i) => i.currentStock <= 0).length;
-  const recentlyAdded = Math.min(items.length, 5);
+  const expiredItems = items.filter((i) => {
+    if (!i.expiryDate || i.currentStock <= 0) return false;
+    const expInfo = getExpiryInfo(i.expiryDate);
+    return expInfo.status === "EXPIRED" || expInfo.status === "EXPIRES_TODAY";
+  }).length;
+  const expiringSoonItems = items.filter((i) => {
+    if (!i.expiryDate || i.currentStock <= 0) return false;
+    const expInfo = getExpiryInfo(i.expiryDate);
+    return expInfo.status === "EXPIRING_CRITICAL" || expInfo.status === "EXPIRING_SOON";
+  }).length;
 
   const filteredItems = useMemo(() => {
     return items
@@ -138,11 +259,14 @@ export default function Inventory() {
 
         const isLow = i.currentStock > 0 && i.currentStock <= i.minimumStock;
         const isOut = i.currentStock <= 0;
+        const expInfo = getExpiryInfo(i.expiryDate);
 
         let matchStatus = true;
         if (statusFilter === "LOW") matchStatus = isLow;
         if (statusFilter === "OUT") matchStatus = isOut;
         if (statusFilter === "OK") matchStatus = !isLow && !isOut;
+        if (statusFilter === "EXPIRED") matchStatus = expInfo.status === "EXPIRED" || expInfo.status === "EXPIRES_TODAY";
+        if (statusFilter === "EXPIRING_SOON") matchStatus = expInfo.status === "EXPIRING_CRITICAL" || expInfo.status === "EXPIRING_SOON" || expInfo.status === "EXPIRES_TODAY";
 
         const matchSearch = !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -151,6 +275,11 @@ export default function Inventory() {
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "stock") return a.currentStock - b.currentStock;
+        if (sortBy === "expiry") {
+          if (!a.expiryDate) return 1;
+          if (!b.expiryDate) return -1;
+          return new Date(a.expiryDate) - new Date(b.expiryDate);
+        }
         return 0;
       });
   }, [items, selectedCategory, statusFilter, searchQuery, sortBy]);
@@ -171,8 +300,8 @@ export default function Inventory() {
             <Package size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Inventory Management</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Track ingredients, monitor stock and avoid shortages</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Inventory & Expiry Management</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Track ingredients, monitor stock levels, and prevent product expiry wastage</p>
           </div>
         </div>
 
@@ -191,70 +320,99 @@ export default function Inventory() {
         {/* Right Side Card Accent */}
         <div className="hidden md:block relative z-10">
           <div className="bg-orange-50/80 border border-orange-100 px-3.5 py-1.5 rounded-xl text-xs">
-            <div className="font-extrabold text-slate-900">Well Managed Inventory</div>
-            <div className="text-[10px] font-bold text-orange-600">Great Food Everyday!</div>
+            <div className="font-extrabold text-slate-900">Zero Wastage Quality</div>
+            <div className="text-[10px] font-bold text-orange-600">Fresh Food Everyday!</div>
           </div>
         </div>
       </div>
 
       {/* 2. Top Metric KPI Cards & Right Action Buttons */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* KPI Cards (4 metrics with > arrows) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 flex-1">
+        {/* KPI Cards (5 metrics) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 flex-1">
           {/* Total Items */}
-          <div className="bg-[#f0fdf4] border border-emerald-100 p-3.5 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
-                <Package size={18} />
+          <div
+            onClick={() => { setStatusFilter("ALL"); setCurrentPage(1); }}
+            className="bg-[#f0fdf4] border border-emerald-100 p-3 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                <Package size={17} />
               </div>
               <div>
-                <div className="text-xl font-extrabold text-slate-900 leading-none">{totalItems}</div>
-                <div className="text-[11px] font-semibold text-slate-500 mt-1">Total Items</div>
+                <div className="text-lg font-extrabold text-slate-900 leading-none">{totalItems}</div>
+                <div className="text-[10px] font-semibold text-slate-500 mt-1">Total Items</div>
               </div>
             </div>
-            <ChevronRight size={16} className="text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={14} className="text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
           </div>
 
           {/* Low Stock Items */}
-          <div className="bg-[#fffbeb] border border-amber-100 p-3.5 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertTriangle size={18} />
+          <div
+            onClick={() => { setStatusFilter("LOW"); setCurrentPage(1); }}
+            className="bg-[#fffbeb] border border-amber-100 p-3 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={17} />
               </div>
               <div>
-                <div className="text-xl font-extrabold text-slate-900 leading-none">{lowStockItems}</div>
-                <div className="text-[11px] font-semibold text-slate-500 mt-1">Low Stock Items</div>
+                <div className="text-lg font-extrabold text-slate-900 leading-none">{lowStockItems}</div>
+                <div className="text-[10px] font-semibold text-slate-500 mt-1">Low Stock</div>
               </div>
             </div>
-            <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={14} className="text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+
+          {/* Expiring Soon */}
+          <div
+            onClick={() => { setStatusFilter("EXPIRING_SOON"); setCurrentPage(1); }}
+            className="bg-[#fff7ed] border border-orange-200 p-3 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/15 text-orange-600 flex items-center justify-center shrink-0">
+                <Clock size={17} />
+              </div>
+              <div>
+                <div className="text-lg font-extrabold text-orange-700 leading-none">{expiringSoonItems}</div>
+                <div className="text-[10px] font-semibold text-orange-600 mt-1">Expiring ≤ 7d</div>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-orange-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+
+          {/* Expired Items */}
+          <div
+            onClick={() => { setStatusFilter("EXPIRED"); setCurrentPage(1); }}
+            className="bg-[#fef2f2] border border-red-200 p-3 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-red-500/15 text-red-600 flex items-center justify-center shrink-0">
+                <AlertCircle size={17} />
+              </div>
+              <div>
+                <div className="text-lg font-extrabold text-red-700 leading-none">{expiredItems}</div>
+                <div className="text-[10px] font-semibold text-red-600 mt-1">Expired</div>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-red-400 group-hover:translate-x-0.5 transition-transform" />
           </div>
 
           {/* Out of Stock */}
-          <div className="bg-[#fff1f2] border border-rose-100 p-3.5 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-600 flex items-center justify-center shrink-0">
-                <XCircle size={18} />
+          <div
+            onClick={() => { setStatusFilter("OUT"); setCurrentPage(1); }}
+            className="bg-[#fff1f2] border border-rose-100 p-3 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 flex items-center justify-center shrink-0">
+                <XCircle size={17} />
               </div>
               <div>
-                <div className="text-xl font-extrabold text-slate-900 leading-none">{outOfStockItems}</div>
-                <div className="text-[11px] font-semibold text-slate-500 mt-1">Out of Stock</div>
+                <div className="text-lg font-extrabold text-slate-900 leading-none">{outOfStockItems}</div>
+                <div className="text-[10px] font-semibold text-slate-500 mt-1">Out of Stock</div>
               </div>
             </div>
-            <ChevronRight size={16} className="text-rose-400 group-hover:translate-x-0.5 transition-transform" />
-          </div>
-
-          {/* Recently Added */}
-          <div className="bg-[#eff6ff] border border-blue-100 p-3.5 rounded-2xl flex items-center justify-between shadow-2xs group cursor-pointer hover:shadow-md transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <ShoppingCart size={18} />
-              </div>
-              <div>
-                <div className="text-xl font-extrabold text-slate-900 leading-none">{recentlyAdded}</div>
-                <div className="text-[11px] font-semibold text-slate-500 mt-1">Recently Added</div>
-              </div>
-            </div>
-            <ChevronRight size={16} className="text-blue-400 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={14} className="text-rose-400 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
@@ -271,19 +429,14 @@ export default function Inventory() {
 
           <button
             type="button"
-            className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-xs shadow-2xs transition-colors cursor-pointer"
-          >
-            <Upload size={16} />
-            <span>Import Stock</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setForm({ name: "", unit: "kg", minimumStock: 5, purchasePrice: 0, currentStock: 0, expiryDate: "" });
+              setShowAddModal(true);
+            }}
             className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
           >
             <Plus size={16} />
-            <span>Add Inventory Item</span>
+            <span>Add Product</span>
           </button>
         </div>
       </div>
@@ -331,26 +484,21 @@ export default function Inventory() {
           />
         </div>
 
-        {/* Dropdowns: Status, Stock Level, Sort By */}
+        {/* Dropdowns: Status, Expiry Filter, Sort By */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-            <span>Status</span>
+            <span>Status / Expiry</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none"
             >
-              <option value="ALL">All</option>
-              <option value="OK">OK</option>
+              <option value="ALL">All Items</option>
+              <option value="OK">In Stock (OK)</option>
               <option value="LOW">Low Stock</option>
               <option value="OUT">Out of Stock</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-            <span>Stock Level</span>
-            <select className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none">
-              <option value="ALL">All</option>
+              <option value="EXPIRING_SOON">⚠️ Expiring Soon (≤7d)</option>
+              <option value="EXPIRED">🔴 Expired</option>
             </select>
           </div>
 
@@ -363,6 +511,7 @@ export default function Inventory() {
             >
               <option value="name">Name (A-Z)</option>
               <option value="stock">Current Stock</option>
+              <option value="expiry">Expiry Date (Earliest)</option>
             </select>
           </div>
         </div>
@@ -382,10 +531,10 @@ export default function Inventory() {
                   <th className="py-3 px-4">Item</th>
                   <th className="py-3 px-4">Category</th>
                   <th className="py-3 px-4">Current Stock</th>
-                  <th className="py-3 px-4">Minimum Stock</th>
+                  <th className="py-3 px-4">Min Stock</th>
                   <th className="py-3 px-4">Unit</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Last Updated</th>
+                  <th className="py-3 px-4">Expiry Date</th>
+                  <th className="py-3 px-4">Stock Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -396,6 +545,7 @@ export default function Inventory() {
                   const imgUrl = getItemImg(item.name);
                   const isLow = item.currentStock > 0 && item.currentStock <= item.minimumStock;
                   const isOut = item.currentStock <= 0;
+                  const expInfo = getExpiryInfo(item.expiryDate);
 
                   return (
                     <tr key={item._id} className="hover:bg-slate-50/80 transition-colors">
@@ -412,7 +562,12 @@ export default function Inventory() {
                             alt={item.name}
                             className="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-2xs shrink-0"
                           />
-                          <span className="truncate">{item.name}</span>
+                          <div>
+                            <span className="truncate block font-bold text-slate-900">{item.name}</span>
+                            {item.purchasePrice > 0 && (
+                              <span className="text-[10px] text-slate-400 font-normal">₹{item.purchasePrice} / {item.unit}</span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -429,7 +584,22 @@ export default function Inventory() {
                       <td className="py-3.5 px-4 text-slate-500 font-semibold">{item.minimumStock}</td>
                       <td className="py-3.5 px-4 text-slate-600 font-medium">{item.unit}</td>
 
-                      {/* Status Badge */}
+                      {/* Expiry Date Column */}
+                      <td className="py-3.5 px-4">
+                        {item.expiryDate ? (
+                          <div className="space-y-0.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] border ${expInfo.badgeStyle}`}>
+                              <Calendar size={10} />
+                              {expInfo.label}
+                            </span>
+                            <div className="text-[9px] text-slate-400 font-mono pl-1">{expInfo.formattedDate}</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 font-mono text-[11px]">—</span>
+                        )}
+                      </td>
+
+                      {/* Stock Status Badge */}
                       <td className="py-3.5 px-4">
                         {isOut ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
@@ -441,27 +611,30 @@ export default function Inventory() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            OK
+                            In Stock
                           </span>
                         )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-slate-400 text-[11px]">
-                        18 Sep 2026
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => handleOpenEdit(item)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            title="Edit Product & Expiry"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
                             onClick={() => {
                               setAdjust({ itemId: item._id, type: "ADJUSTMENT", quantity: "", notes: "" });
                               setShowAdjustModal(true);
                             }}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                            className="p-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-600 transition-colors"
                             title="Adjust Stock"
                           >
-                            <Pencil size={14} />
+                            <RefreshCw size={14} />
                           </button>
                           <button
                             onClick={() => {
@@ -531,12 +704,14 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Add Inventory Item Modal */}
+      {/* ─── ADD INVENTORY ITEM MODAL ─── */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-xl max-w-md w-full space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-2xl max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">Add Inventory Item</h3>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Package size={18} className="text-orange-500" /> Add New Inventory Product
+              </h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X size={18} />
               </button>
@@ -547,8 +722,8 @@ export default function Inventory() {
                 <label className="block font-semibold text-slate-700 mb-1">Item Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Paneer, Tomatoes, Basmati Rice"
-                  className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none"
+                  placeholder="e.g. Fresh Paneer, Buffalo Milk, Basmati Rice"
+                  className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none font-semibold"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
@@ -560,7 +735,7 @@ export default function Inventory() {
                   <label className="block font-semibold text-slate-700 mb-1">Unit *</label>
                   <input
                     type="text"
-                    placeholder="kg, l, pcs"
+                    placeholder="kg, l, pcs, box, packet"
                     className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none"
                     value={form.unit}
                     onChange={(e) => setForm({ ...form, unit: e.target.value })}
@@ -582,11 +757,11 @@ export default function Inventory() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Current Stock</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Initial Stock</label>
                   <input
                     type="number"
                     placeholder="20"
-                    className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none"
+                    className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none font-bold"
                     value={form.currentStock}
                     onChange={(e) => setForm({ ...form, currentStock: e.target.value })}
                   />
@@ -604,6 +779,54 @@ export default function Inventory() {
                 </div>
               </div>
 
+              {/* Expiry Date Section with Quick Buttons */}
+              <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-800 flex items-center gap-1.5">
+                    <Clock size={14} className="text-orange-500" /> Expiry Date (Optional)
+                  </label>
+                  {form.expiryDate && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, expiryDate: "" })}
+                      className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
+                    >
+                      Clear Expiry
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="date"
+                  className="w-full bg-white text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none font-semibold"
+                  value={form.expiryDate}
+                  onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+                />
+
+                {/* Quick Expiry Preset Buttons */}
+                <div>
+                  <p className="text-[10px] text-slate-400 font-semibold mb-1">Quick Expiry Presets:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: "+3 Days (Dairy/Bread)", days: 3 },
+                      { label: "+7 Days (Veg/Paneer)", days: 7 },
+                      { label: "+15 Days (Meat/Eggs)", days: 15 },
+                      { label: "+1 Month", days: 30 },
+                      { label: "+3 Months", days: 90 },
+                    ].map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.days}
+                        onClick={() => setForm({ ...form, expiryDate: addDaysToDate(preset.days) })}
+                        className="px-2 py-1 rounded-lg bg-white border border-orange-200 text-orange-700 hover:bg-orange-100 text-[10px] font-bold transition-colors shadow-2xs"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"
@@ -617,7 +840,7 @@ export default function Inventory() {
                   disabled={submitting}
                   className="flex-1 py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md shadow-orange-500/20"
                 >
-                  {submitting ? "Saving..." : "Add Item"}
+                  {submitting ? "Saving..." : "Add Product"}
                 </button>
               </div>
             </form>
@@ -625,7 +848,146 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Stock Adjustment Modal */}
+      {/* ─── EDIT INVENTORY ITEM MODAL ─── */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-2xl max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Pencil size={18} className="text-orange-500" /> Edit Product & Expiry
+              </h3>
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEdit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Item Name *</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none font-semibold"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Unit *</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none"
+                    value={editForm.unit}
+                    onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Min Stock Threshold</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none"
+                    value={editForm.minimumStock}
+                    onChange={(e) => setEditForm({ ...editForm, minimumStock: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Current Stock</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none font-bold"
+                    value={editForm.currentStock}
+                    onChange={(e) => setEditForm({ ...editForm, currentStock: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Purchase Price (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none"
+                    value={editForm.purchasePrice}
+                    onChange={(e) => setEditForm({ ...editForm, purchasePrice: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Expiry Date Section */}
+              <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-800 flex items-center gap-1.5">
+                    <Clock size={14} className="text-orange-500" /> Expiry Date
+                  </label>
+                  {editForm.expiryDate && (
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, expiryDate: "" })}
+                      className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
+                    >
+                      Clear Expiry
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="date"
+                  className="w-full bg-white text-slate-800 text-xs rounded-xl p-2.5 border border-slate-200 focus:border-orange-500 focus:outline-none font-semibold"
+                  value={editForm.expiryDate}
+                  onChange={(e) => setEditForm({ ...editForm, expiryDate: e.target.value })}
+                />
+
+                {/* Quick Expiry Preset Buttons */}
+                <div>
+                  <p className="text-[10px] text-slate-400 font-semibold mb-1">Quick Expiry Presets:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: "+3 Days", days: 3 },
+                      { label: "+7 Days", days: 7 },
+                      { label: "+15 Days", days: 15 },
+                      { label: "+1 Month", days: 30 },
+                      { label: "+3 Months", days: 90 },
+                    ].map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.days}
+                        onClick={() => setEditForm({ ...editForm, expiryDate: addDaysToDate(preset.days) })}
+                        className="px-2 py-1 rounded-lg bg-white border border-orange-200 text-orange-700 hover:bg-orange-100 text-[10px] font-bold transition-colors shadow-2xs"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md shadow-orange-500/20"
+                >
+                  {submitting ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── STOCK ADJUSTMENT MODAL ─── */}
       {showAdjustModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-xl max-w-md w-full space-y-4">
