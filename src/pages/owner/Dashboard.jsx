@@ -25,6 +25,7 @@ import QuickActions from "../../components/dashboard/QuickActions";
 import RecentOrders from "../../components/dashboard/RecentOrders";
 import LowStockItems from "../../components/dashboard/LowStockItems";
 import DashboardSkeleton from "../../components/dashboard/DashboardSkeleton";
+import MobileHome from "../../components/mobile/MobileHome";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -104,116 +105,124 @@ export default function Dashboard() {
   const totalTablesCount = (data.availableTables || 0) + (data.activeTables || 0);
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
-      {/* 1. Header */}
-      <DashboardHeader />
-
-      {/* 2. KPI / Stat Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Today's Sales"
-          value={`₹${(data.todaysSales ?? 0).toLocaleString("en-IN")}`}
-          subtitle="↗ 0% vs yesterday"
-          icon={TrendingUp}
-          colorScheme="orange"
-        />
-        <StatCard
-          title="Today's Orders"
-          value={data.todaysOrders ?? 0}
-          subtitle="↗ 0% vs yesterday"
-          icon={ClipboardList}
-          colorScheme="green"
-        />
-        <StatCard
-          title="Today's Profit"
-          value={`₹${(data.todaysProfit ?? 0).toLocaleString("en-IN")}`}
-          subtitle="↗ 0% vs yesterday"
-          icon={Coins}
-          colorScheme="blue"
-        />
-        <StatCard
-          title="Active Tables"
-          value={data.activeTables ?? 0}
-          subtitle={`out of ${totalTablesCount || 20} tables`}
-          icon={Users}
-          colorScheme="purple"
-        />
-        <StatCard
-          title="Available Tables"
-          value={data.availableTables ?? 0}
-          subtitle="Total Tables"
-          icon={Table2}
-          colorScheme="pink"
-        />
-        <StatCard
-          title="Pending KOTs"
-          value={data.pendingKots ?? 0}
-          subtitle="In Kitchen"
-          icon={Clock}
-          colorScheme="amber"
-        />
-        <StatCard
-          title="Preparing"
-          value={data.preparingOrders ?? 0}
-          subtitle="In Progress"
-          icon={ChefHat}
-          colorScheme="indigo"
-        />
-        <StatCard
-          title="Ready"
-          value={data.readyOrders ?? 0}
-          subtitle="Ready to Serve"
-          icon={CheckCircle2}
-          colorScheme="teal"
-        />
-        <StatCard
-          title="Unpaid Orders"
-          value={data.unpaidOrders ?? 0}
-          subtitle="Awaiting Payment"
-          icon={ShoppingBag}
-          colorScheme="rose"
-        />
-        <StatCard
-          title="Low Stock Items"
-          value={data.lowStockItems ?? 0}
-          subtitle="Need Attention"
-          icon={Package}
-          colorScheme="sky"
-        />
-        <StatCard
-          title="Today's Expenses"
-          value={`₹${(data.todaysExpenses ?? 0).toLocaleString("en-IN")}`}
-          subtitle="↗ 0% vs yesterday"
-          icon={Wallet}
-          colorScheme="orange"
-        />
+    <>
+      {/* Mobile-first Dedicated Application Interface (<768px) */}
+      <div className="block md:hidden">
+        <MobileHome />
       </div>
 
-      {/* 3. Middle Section: Sales Overview + Order Status & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <SalesOverview salesData={sales} />
-        </div>
-        <div className="space-y-6 flex flex-col justify-between">
-          <OrderStatus
-            pendingCount={data.pendingKots}
-            preparingCount={data.preparingOrders}
-            readyCount={data.readyOrders}
-            completedCount={(data.todaysOrders || 0) - ((data.pendingKots || 0) + (data.preparingOrders || 0) + (data.readyOrders || 0))}
+      {/* Desktop & Tablet Dashboard (>=768px) - Untouched */}
+      <div className="hidden md:block space-y-6 max-w-[1600px] mx-auto pb-10">
+        {/* 1. Header */}
+        <DashboardHeader />
+
+        {/* 2. KPI / Stat Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Today's Sales"
+            value={`₹${(data.todaysSales ?? 0).toLocaleString("en-IN")}`}
+            subtitle="↗ 0% vs yesterday"
+            icon={TrendingUp}
+            colorScheme="orange"
           />
-          <QuickActions />
+          <StatCard
+            title="Today's Orders"
+            value={data.todaysOrders ?? 0}
+            subtitle="↗ 0% vs yesterday"
+            icon={ClipboardList}
+            colorScheme="green"
+          />
+          <StatCard
+            title="Today's Profit"
+            value={`₹${(data.todaysProfit ?? 0).toLocaleString("en-IN")}`}
+            subtitle="↗ 0% vs yesterday"
+            icon={Coins}
+            colorScheme="blue"
+          />
+          <StatCard
+            title="Active Tables"
+            value={data.activeTables ?? 0}
+            subtitle={`out of ${totalTablesCount || 20} tables`}
+            icon={Users}
+            colorScheme="purple"
+          />
+          <StatCard
+            title="Available Tables"
+            value={data.availableTables ?? 0}
+            subtitle="Total Tables"
+            icon={Table2}
+            colorScheme="pink"
+          />
+          <StatCard
+            title="Pending KOTs"
+            value={data.pendingKots ?? 0}
+            subtitle="In Kitchen"
+            icon={Clock}
+            colorScheme="amber"
+          />
+          <StatCard
+            title="Preparing"
+            value={data.preparingOrders ?? 0}
+            subtitle="In Progress"
+            icon={ChefHat}
+            colorScheme="indigo"
+          />
+          <StatCard
+            title="Ready"
+            value={data.readyOrders ?? 0}
+            subtitle="Ready to Serve"
+            icon={CheckCircle2}
+            colorScheme="teal"
+          />
+          <StatCard
+            title="Unpaid Orders"
+            value={data.unpaidOrders ?? 0}
+            subtitle="Awaiting Payment"
+            icon={ShoppingBag}
+            colorScheme="rose"
+          />
+          <StatCard
+            title="Low Stock Items"
+            value={data.lowStockItems ?? 0}
+            subtitle="Need Attention"
+            icon={Package}
+            colorScheme="sky"
+          />
+          <StatCard
+            title="Today's Expenses"
+            value={`₹${(data.todaysExpenses ?? 0).toLocaleString("en-IN")}`}
+            subtitle="↗ 0% vs yesterday"
+            icon={Wallet}
+            colorScheme="orange"
+          />
         </div>
-      </div>
 
-      {/* 4. Bottom Section: Recent Orders + Low Stock Items */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentOrders orders={recentOrdersList} />
+        {/* 3. Middle Section: Sales Overview + Order Status & Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <SalesOverview salesData={sales} />
+          </div>
+          <div className="space-y-6 flex flex-col justify-between">
+            <OrderStatus
+              pendingCount={data.pendingKots}
+              preparingCount={data.preparingOrders}
+              readyCount={data.readyOrders}
+              completedCount={(data.todaysOrders || 0) - ((data.pendingKots || 0) + (data.preparingOrders || 0) + (data.readyOrders || 0))}
+            />
+            <QuickActions />
+          </div>
         </div>
-        <div>
-          <LowStockItems items={lowStockList} />
+
+        {/* 4. Bottom Section: Recent Orders + Low Stock Items */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentOrders orders={recentOrdersList} />
+          </div>
+          <div>
+            <LowStockItems items={lowStockList} />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

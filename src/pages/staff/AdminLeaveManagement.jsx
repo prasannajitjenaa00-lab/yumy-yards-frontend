@@ -28,6 +28,7 @@ import {
 import { getTodayAttendance } from "../../services/attendanceService";
 import { formatDateStr } from "../../utils/attendanceUtils";
 import { LEAVE_STATUS, LEAVE_TYPES } from "../../constants/statusConstants";
+import MobileLeaveManagement from "../../components/mobile/MobileLeaveManagement";
 
 const LEAVE_TYPE_UI = {
   CASUAL: { label: "Casual Leave", color: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -233,8 +234,15 @@ export default function AdminLeaveManagement() {
   }, [leaves, statusFilter, typeFilter, searchQuery]);
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* ─── 1. TOP HEADER ─── */}
+    <>
+      {/* Mobile-first Admin Leave Interface (<768px) */}
+      <div className="block md:hidden">
+        <MobileLeaveManagement />
+      </div>
+
+      {/* Desktop & Tablet Admin Leave (>=768px) - Untouched */}
+      <div className="hidden md:block space-y-6 pb-12">
+        {/* ─── 1. TOP HEADER ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -1064,6 +1072,7 @@ export default function AdminLeaveManagement() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

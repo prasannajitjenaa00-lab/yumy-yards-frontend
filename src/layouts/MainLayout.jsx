@@ -35,6 +35,14 @@
   import { clearCredentials } from "../store/slices/authSlice";
   import { logout as logoutApi } from "../services/authService";
   import { toast } from "react-toastify";
+  import { getBillRequests, processBill } from "../services/orderService";
+  import { getSocket } from "../socket/socketClient";
+
+  import MobileHeader from "../components/mobile/MobileHeader";
+  import MobileBottomNav from "../components/mobile/MobileBottomNav";
+  import MobileMoreModules from "../components/mobile/MobileMoreModules";
+  import MobileNotificationsDrawer from "../components/mobile/MobileNotificationsDrawer";
+  import MobileProfileDrawer from "../components/mobile/MobileProfileDrawer";
 
   const NAV_BY_ROLE = {
     OWNER: [
@@ -107,6 +115,49 @@
     const navigate = useNavigate();
     const nav = NAV_BY_ROLE[user?.role] || NAV_BY_ROLE.OWNER;
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+    const [showNotificationsDrawer, setShowNotificationsDrawer] = useState(false);
+    const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+      if (["OWNER", "MANAGER", "CASHIER"].includes(user?.role)) {
+        getBillRequests()
+          .then((res) => {
+            const list = Array.isArray(res?.data) ? res.data : [];
+            const pending = list.filter(
+              (r) => r.billStatus === "REQUESTED" || r.billStatus === "PROCESSING"
+            ).length;
+            setUnreadCount(pending);
+          })
+          .catch(() => {});
+
+        const socket = getSocket();
+        if (socket) {
+          const handleUpdate = () => {
+            getBillRequests()
+              .then((res) => {
+                const list = Array.isArray(res?.data) ? res.data : [];
+                const pending = list.filter(
+                  (r) => r.billStatus === "REQUESTED" || r.billStatus === "PROCESSING"
+                ).length;
+                setUnreadCount(pending);
+              })
+              .catch(() => {});
+          };
+          socket.on("bill:request", handleUpdate);
+          socket.on("table:update", handleUpdate);
+          socket.on("payment:new", handleUpdate);
+          socket.on("bill:processing", handleUpdate);
+          return () => {
+            socket.off("bill:request", handleUpdate);
+            socket.off("table:update", handleUpdate);
+            socket.off("payment:new", handleUpdate);
+            socket.off("bill:processing", handleUpdate);
+          };
+        }
+      }
+    }, [user]);
 
     const handleLogout = async () => {
       try {
@@ -121,17 +172,17 @@
 
     return (
       <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden">
-        {/* Mobile Backdrop Overlay */}
+        {/* Tablet Backdrop Overlay (hidden on mobile and desktop) */}
         {mobileOpen && (
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:block lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
         )}
 
-        {/* Sidebar Navigation */}
+        {/* Sidebar Navigation - Hidden on Mobile (<768px), Visible on Tablet/Desktop (>=768px) */}
         <aside
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0f172a] text-slate-300 flex flex-col shrink-0 transition-transform duration-300 ease-in-out ${
+          className={`hidden md:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0f172a] text-slate-300 flex-col shrink-0 transition-transform duration-300 ease-in-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
         >
@@ -222,17 +273,60 @@
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <TopBar onMenuClick={() => setMobileOpen(true)} />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-6 space-y-6">
-            <Outlet />
+          {/* Desktop & Tablet TopBar (>=768px) */}
+          <div className="hidden md:block shrink-0">
+            <TopBar onMenuClick={() => setMobileOpen(true)} />
+          </div>
+
+          {/* Mobile Top Header (<768px) */}
+          <div className="block md:hidden shrink-0">
+            <MobileHeader
+              onOpenNotifications={() => setShowNotificationsDrawer(true)}
+              onOpenProfile={() => setShowProfileDrawer(true)}
+              unreadCount={unreadCount}
+            />
+          </div>
+
+          {/* Page Content */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-6 space-y-6 pb-28 md:pb-6">
+            <Outlet
+              context={{
+                openMore: () => setShowMoreDrawer(true),
+                openNotifications: () => setShowNotificationsDrawer(true),
+                openProfile: () => setShowProfileDrawer(true),
+              }}
+            />
           </main>
+
+          {/* Mobile Bottom Navigation & Drawers (<768px) */}
+          <div className="block md:hidden">
+            <MobileBottomNav
+              onOpenMore={() => setShowMoreDrawer(true)}
+              onOpenNotifications={() => setShowNotificationsDrawer(true)}
+              onOpenProfile={() => setShowProfileDrawer(true)}
+              isMoreOpen={showMoreDrawer}
+              isNotificationsOpen={showNotificationsDrawer}
+              isProfileOpen={showProfileDrawer}
+              unreadCount={unreadCount}
+            />
+            <MobileMoreModules
+              isOpen={showMoreDrawer}
+              onClose={() => setShowMoreDrawer(false)}
+            />
+            <MobileNotificationsDrawer
+              isOpen={showNotificationsDrawer}
+              onClose={() => setShowNotificationsDrawer(false)}
+              onCountUpdate={setUnreadCount}
+            />
+            <MobileProfileDrawer
+              isOpen={showProfileDrawer}
+              onClose={() => setShowProfileDrawer(false)}
+            />
+          </div>
         </div>
       </div>
     );
   }
-
-  import { getBillRequests, processBill } from "../services/orderService";
-  import { getSocket } from "../socket/socketClient";
 
   function TopBar({ onMenuClick }) {
     const { user } = useSelector((s) => s.auth);

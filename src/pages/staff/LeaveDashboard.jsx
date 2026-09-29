@@ -31,6 +31,7 @@ import {
   formatDateStr,
 } from "../../utils/attendanceUtils";
 import { LEAVE_STATUS, LEAVE_TYPES } from "../../constants/statusConstants";
+import MobileLeave from "../../components/mobile/MobileLeave";
 
 const LEAVE_TYPE_UI = {
   CASUAL: {
@@ -230,8 +231,15 @@ export default function LeaveDashboard() {
   }, [leaves, statusFilter, typeFilter, searchQuery]);
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* ─── 1. TOP HEADER ─── */}
+    <>
+      {/* Mobile-first Leave Interface (<768px) */}
+      <div className="block md:hidden">
+        <MobileLeave />
+      </div>
+
+      {/* Desktop & Tablet Leave Interface (>=768px) - Untouched */}
+      <div className="hidden md:block space-y-6 pb-12">
+        {/* ─── 1. TOP HEADER ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -750,6 +758,7 @@ export default function LeaveDashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

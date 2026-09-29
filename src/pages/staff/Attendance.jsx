@@ -37,6 +37,7 @@ import AttendanceList from "./components/AttendanceList";
 import AttendanceSummary from "./components/AttendanceSummary";
 import TeamRosterView from "./components/TeamRosterView";
 import StaffShiftsView from "./components/StaffShiftsView";
+import MobileAttendance from "../../components/mobile/MobileAttendance";
 
 const ALL_DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
@@ -485,8 +486,15 @@ export default function Attendance() {
   }, [selectedStaffId, todayList, user]);
 
   return (
-    <div className="space-y-5 pb-10">
-      {/* 1. TOP HEADER */}
+    <>
+      {/* Dedicated Mobile Attendance Interface (<768px) */}
+      <div className="block md:hidden">
+        <MobileAttendance />
+      </div>
+
+      {/* Desktop & Tablet Attendance (>=768px) - Untouched */}
+      <div className="hidden md:block space-y-5 pb-10">
+        {/* 1. TOP HEADER */}
       <AttendanceHeader
         currentDate={currentDate}
         onPrevMonth={handlePrevMonth}
@@ -831,6 +839,7 @@ export default function Attendance() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
