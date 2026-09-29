@@ -43,6 +43,7 @@
   import MobileMoreModules from "../components/mobile/MobileMoreModules";
   import MobileNotificationsDrawer from "../components/mobile/MobileNotificationsDrawer";
   import MobileProfileDrawer from "../components/mobile/MobileProfileDrawer";
+  import SupportModal from "../components/support/SupportModal";
 
   const NAV_BY_ROLE = {
     OWNER: [
@@ -119,6 +120,24 @@
     const [showNotificationsDrawer, setShowNotificationsDrawer] = useState(false);
     const [showProfileDrawer, setShowProfileDrawer] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [showSupportModal, setShowSupportModal] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+      return localStorage.getItem("theme") === "dark";
+    });
+
+    useEffect(() => {
+      if (isDarkMode) {
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+      }
+    }, [isDarkMode]);
+
+    const toggleTheme = () => {
+      setIsDarkMode((prev) => !prev);
+    };
 
     useEffect(() => {
       if (["OWNER", "MANAGER", "CASHIER"].includes(user?.role)) {
@@ -171,7 +190,7 @@
     };
 
     return (
-      <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden">
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 overflow-hidden">
         {/* Tablet Backdrop Overlay (hidden on mobile and desktop) */}
         {mobileOpen && (
           <div
@@ -247,7 +266,10 @@
             </div>
 
             {/* Need Help Card */}
-            <div className="p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/40 flex items-center justify-between group hover:bg-slate-800 transition-colors cursor-pointer">
+            <div
+              onClick={() => setShowSupportModal(true)}
+              className="p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/40 flex items-center justify-between group hover:bg-slate-800 transition-colors cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
                   <HelpCircle size={16} />
@@ -275,7 +297,11 @@
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Desktop & Tablet TopBar (>=768px) */}
           <div className="hidden md:block shrink-0">
-            <TopBar onMenuClick={() => setMobileOpen(true)} />
+            <TopBar
+              onMenuClick={() => setMobileOpen(true)}
+              isDarkMode={isDarkMode}
+              onToggleTheme={toggleTheme}
+            />
           </div>
 
           {/* Mobile Top Header (<768px) */}
@@ -321,20 +347,31 @@
             <MobileProfileDrawer
               isOpen={showProfileDrawer}
               onClose={() => setShowProfileDrawer(false)}
+              onOpenSupport={() => {
+                setShowProfileDrawer(false);
+                setShowSupportModal(true);
+              }}
+              isDarkMode={isDarkMode}
+              onToggleTheme={toggleTheme}
             />
           </div>
         </div>
+
+        {/* Support Hotline & Helpdesk Modal */}
+        <SupportModal
+          isOpen={showSupportModal}
+          onClose={() => setShowSupportModal(false)}
+        />
       </div>
     );
   }
 
-  function TopBar({ onMenuClick }) {
+  function TopBar({ onMenuClick, isDarkMode, onToggleTheme }) {
     const { user } = useSelector((s) => s.auth);
     const navigate = useNavigate();
     const searchInputRef = useRef(null);
     const dropdownRef = useRef(null);
 
-    const [isDarkMode, setIsDarkMode] = useState(false);
     const [billRequests, setBillRequests] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [filter, setFilter] = useState("Pending");
@@ -438,7 +475,7 @@
     const userRole = user?.role || "OWNER";
 
     return (
-      <header className="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shrink-0 shadow-xs">
+      <header className="h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shrink-0 shadow-xs">
         {/* Left: Mobile Toggle & Global Search */}
         <div className="flex items-center gap-3 flex-1 max-w-md">
           <button
@@ -581,10 +618,12 @@
           {/* Theme Toggle */}
           <button
             type="button"
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors hidden sm:flex"
+            onClick={onToggleTheme}
+            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors hidden sm:flex cursor-pointer"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label="Toggle theme"
           >
-            {isDarkMode ? <Sun size={18} className="text-amber-500" /> : <Moon size={18} />}
+            {isDarkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
           </button>
 
           <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>

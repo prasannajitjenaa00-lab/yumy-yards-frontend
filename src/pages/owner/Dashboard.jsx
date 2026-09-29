@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { getDashboard, getSalesReport, getInventoryReport } from "../../services/reportService";
 import { getOrders } from "../../services/orderService";
 import {
@@ -102,13 +103,14 @@ export default function Dashboard() {
     );
   }
 
+  const outletCtx = useOutletContext() || {};
   const totalTablesCount = (data.availableTables || 0) + (data.activeTables || 0);
 
   return (
     <>
       {/* Mobile-first Dedicated Application Interface (<768px) */}
       <div className="block md:hidden">
-        <MobileHome />
+        <MobileHome onOpenMore={outletCtx.openMore} />
       </div>
 
       {/* Desktop & Tablet Dashboard (>=768px) - Untouched */}

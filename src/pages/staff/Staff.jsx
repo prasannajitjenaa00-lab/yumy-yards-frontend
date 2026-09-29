@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   Clock,
 } from "lucide-react";
+import RolePermissionsModal from "./components/RolePermissionsModal";
+import StaffActivityModal from "./components/StaffActivityModal";
 
 const ROLES = ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"];
 
@@ -38,6 +40,8 @@ export default function Staff() {
 
   // Form State
   const [showPanel, setShowPanel] = useState(true);
+  const [showRolePermissionsModal, setShowRolePermissionsModal] = useState(false);
+  const [showStaffActivityModal, setShowStaffActivityModal] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -378,9 +382,12 @@ export default function Staff() {
           {/* Bottom Action Cards (2 Cards Grid) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Card 1: Role Permissions */}
-            <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-md transition-all cursor-pointer group">
+            <div
+              onClick={() => setShowRolePermissionsModal(true)}
+              className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <Lock size={18} />
                 </div>
                 <div>
@@ -392,9 +399,12 @@ export default function Staff() {
             </div>
 
             {/* Card 2: Staff Activity */}
-            <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-md transition-all cursor-pointer group">
+            <div
+              onClick={() => setShowStaffActivityModal(true)}
+              className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <Activity size={18} />
                 </div>
                 <div>
@@ -519,6 +529,19 @@ export default function Staff() {
           </div>
         )}
       </div>
+
+      {/* Role Permissions Matrix Modal */}
+      <RolePermissionsModal
+        isOpen={showRolePermissionsModal}
+        onClose={() => setShowRolePermissionsModal(false)}
+      />
+
+      {/* Staff Activity Timeline Modal */}
+      <StaffActivityModal
+        isOpen={showStaffActivityModal}
+        onClose={() => setShowStaffActivityModal(false)}
+        staffList={users}
+      />
     </div>
   );
 }

@@ -12,11 +12,20 @@ import {
   Shield,
   User,
   ChevronRight,
+  Sun,
+  Moon,
+  HelpCircle,
 } from "lucide-react";
 import { clearCredentials } from "../../store/slices/authSlice";
 import { logout as logoutApi } from "../../services/authService";
 
-export default function MobileProfileDrawer({ isOpen, onClose }) {
+export default function MobileProfileDrawer({
+  isOpen,
+  onClose,
+  onOpenSupport,
+  isDarkMode = false,
+  onToggleTheme,
+}) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((s) => s.auth);
@@ -161,6 +170,50 @@ export default function MobileProfileDrawer({ isOpen, onClose }) {
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-slate-300" />
+              </button>
+            )}
+
+            {/* Help & Support */}
+            <button
+              type="button"
+              onClick={onOpenSupport}
+              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                  <HelpCircle size={18} />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-800">Need Help? Support</div>
+                  <div className="text-[10px] text-slate-400">We're here to support you</div>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-slate-300" />
+            </button>
+
+            {/* Day / Night Theme Toggle */}
+            {onToggleTheme && (
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800">
+                      {isDarkMode ? "Light Theme" : "Night / Dark Theme"}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {isDarkMode ? "Switch to day appearance" : "Switch to night appearance"}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-orange-600">
+                  {isDarkMode ? "Active" : "Switch"}
+                </span>
               </button>
             )}
           </div>
