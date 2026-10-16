@@ -520,9 +520,8 @@ export default function Customers() {
             <div className="bg-amber-50/60 border border-amber-100 p-3 rounded-xl text-xs space-y-1">
               <div className="font-semibold text-slate-800 flex items-start gap-1.5">
                 <FileText size={14} className="text-amber-500 shrink-0 mt-0.5" />
-                <span>Prefers less spicy food. Regular customer on weekends.</span>
+                <span>{activeProfile.notes || "No special preferences or notes recorded for this customer."}</span>
               </div>
-              <div className="text-[10px] text-slate-400 text-right">Added on 10 Sep 2026</div>
             </div>
           </div>
         </div>
