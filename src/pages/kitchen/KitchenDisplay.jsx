@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   Radio,
   Monitor,
+  User,
 } from "lucide-react";
 
 const COLUMNS = [
@@ -107,6 +108,8 @@ export default function KitchenDisplay() {
       .finally(() => setLoading(false));
   };
 
+  const [advancingId, setAdvancingId] = useState(null);
+
   useEffect(() => {
     load();
     const socket = getSocket();
@@ -117,7 +120,9 @@ export default function KitchenDisplay() {
       });
       socket.on("kot:status", load);
     }
+    const interval = setInterval(load, 8000);
     return () => {
+      clearInterval(interval);
       if (socket) {
         socket.off("kot:new");
         socket.off("kot:status");
@@ -159,12 +164,16 @@ export default function KitchenDisplay() {
   };
 
   const advance = async (kot, next) => {
+    if (advancingId) return;
+    setAdvancingId(kot._id);
     try {
       await updateKOTStatus(kot._id, next);
       toast.success(`KOT moved to ${next}`);
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || "Update failed");
+    } finally {
+      setAdvancingId(null);
     }
   };
 
@@ -303,12 +312,18 @@ export default function KitchenDisplay() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-5">
                   {matchingKots.map((kot) => {
                     const kotNum = kot.kotNumber || `#${kot._id?.slice(-4)}`;
-                    const tableText = kot.table?.number
-                      ? `Table ${kot.table.number}`
-                      : kot.orderType || "DINE_IN";
+                    const orderNum = kot.order?.orderNumber ? `#${kot.order.orderNumber}` : kotNum;
+                    const orderTypeText =
+                      kot.orderType === "TAKEAWAY"
+                        ? "TAKEAWAY"
+                        : kot.orderType === "DELIVERY"
+                        ? "DELIVERY"
+                        : "COUNTER / DINE-IN";
                     const formattedTime = kot.createdAt
                       ? new Date(kot.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                       : "Just now";
+                    const cashierName = kot.createdBy?.name || kot.order?.createdBy?.name || "Cashier Counter";
+                    const customerName = kot.order?.customer?.name;
 
                     return (
                       <div
@@ -318,13 +333,46 @@ export default function KitchenDisplay() {
                         <div className="space-y-3.5">
                           {/* Card Header */}
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono font-black text-white text-base bg-slate-800/90 border border-slate-700 px-3 py-1 rounded-xl shadow-xs">
-                              {kotNum}
-                            </span>
-                            <span className="font-extrabold text-orange-400 bg-orange-500/10 border border-orange-500/30 px-3 py-1 rounded-xl text-xs">
-                              {tableText}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono font-black text-amber-300 text-base bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-xl shadow-xs">
+                                {orderNum}
+                              </span>
+                              <span className="font-mono font-bold text-slate-400 text-xs bg-slate-800/90 border border-slate-700 px-2 py-0.5 rounded-lg shadow-xs">
+                                {kotNum}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {kot.order?.paymentStatus === "PAID" && (
+                                <span className="font-black text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-lg text-xs tracking-wider">
+                                  ✓ PAID
+                                </span>
+                              )}
+                              <span className="font-extrabold text-orange-400 bg-orange-500/10 border border-orange-500/30 px-3 py-1 rounded-xl text-xs">
+                                {orderTypeText}
+                              </span>
+                            </div>
                           </div>
+
+                          {/* Cashier & Server Badge */}
+                          <div className="flex items-center justify-between gap-2 text-xs bg-slate-800/90 border border-slate-700/80 rounded-xl px-3 py-1.5">
+                            <span className="flex items-center gap-1.5 text-slate-200 font-bold truncate">
+                              <User size={13} className="text-amber-400 shrink-0" />
+                              <span className="text-[10px] uppercase font-bold text-slate-400">Cashier:</span>
+                              <span className="text-amber-300 font-black truncate">{cashierName}</span>
+                            </span>
+                            {customerName && (
+                              <span className="text-[11px] text-slate-300 font-medium truncate max-w-[140px]" title={`Guest: ${customerName}`}>
+                                👤 {customerName}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Order level notes */}
+                          {kot.order?.notes && (
+                            <div className="text-[11px] text-amber-200 font-semibold bg-amber-950/60 border border-amber-500/30 px-2.5 py-1.5 rounded-xl">
+                              📌 Note: {kot.order.notes}
+                            </div>
+                          )}
 
                           {/* Time & Server row */}
                           <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800 pb-2">
@@ -363,10 +411,11 @@ export default function KitchenDisplay() {
                         <div className="pt-4 mt-3 border-t border-slate-800">
                           <button
                             type="button"
+                            disabled={advancingId === kot._id}
                             onClick={() => advance(kot, activeMaxColumn.next)}
-                            className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm shadow-xl active:scale-[0.98] transition-all cursor-pointer ${activeMaxColumn.buttonBg}`}
+                            className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm shadow-xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 ${activeMaxColumn.buttonBg}`}
                           >
-                            {activeMaxColumn.actionText}
+                            {advancingId === kot._id ? "Updating..." : activeMaxColumn.actionText}
                           </button>
                         </div>
                       </div>
@@ -496,24 +545,70 @@ export default function KitchenDisplay() {
                     <div className="space-y-3.5 flex-1 mb-4 overflow-y-auto max-h-[520px] pr-1 scrollbar-thin scrollbar-thumb-slate-200">
                       {matchingKots.map((kot) => {
                         const kotNum = kot.kotNumber || `#${kot._id?.slice(-4)}`;
-                        const tableText = kot.table?.number
-                          ? `Table ${kot.table.number}`
-                          : kot.orderType || "DINE_IN";
+                        const orderNum = kot.order?.orderNumber ? `#${kot.order.orderNumber}` : kotNum;
+                        const orderTypeText =
+                          kot.orderType === "TAKEAWAY"
+                            ? "TAKEAWAY"
+                            : kot.orderType === "DELIVERY"
+                            ? "DELIVERY"
+                            : "COUNTER / DINE-IN";
+                        const cashierName = kot.createdBy?.name || kot.order?.createdBy?.name || "Cashier Counter";
+                        const customerName = kot.order?.customer?.name;
+                        const formattedTime = kot.createdAt
+                          ? new Date(kot.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          : null;
 
                         return (
                           <div
                             key={kot._id}
-                            className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 space-y-3 hover:bg-slate-50 transition-colors shadow-2xs"
+                            className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 space-y-2.5 hover:bg-slate-50 transition-colors shadow-2xs"
                           >
                             {/* Card Top Row */}
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-extrabold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
-                                {kotNum}
-                              </span>
-                              <span className="font-bold text-slate-700 bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md border border-orange-100">
-                                {tableText}
-                              </span>
+                            <div className="flex items-center justify-between text-xs gap-1.5 flex-wrap">
+                              <div className="flex items-center gap-1">
+                                <span className="font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md border border-orange-200 shadow-2xs">
+                                  {orderNum}
+                                </span>
+                                <span className="font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200 text-[10px]">
+                                  {kotNum}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {kot.order?.paymentStatus === "PAID" && (
+                                  <span className="font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-md text-[10px] tracking-wide">
+                                    ✓ PAID
+                                  </span>
+                                )}
+                                <span className="font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
+                                  {orderTypeText}
+                                </span>
+                              </div>
                             </div>
+
+                            {/* Cashier & Guest Details */}
+                            <div className="flex items-center justify-between gap-1 text-[11px] bg-white border border-slate-200/90 rounded-lg px-2 py-1 shadow-2xs">
+                              <span className="flex items-center gap-1 font-semibold text-slate-700 truncate" title={`Cashier / Server: ${cashierName}`}>
+                                <User size={12} className="text-orange-500 shrink-0" />
+                                <span className="text-[10px] text-slate-400 uppercase font-bold">Cashier:</span>
+                                <span className="text-slate-900 font-bold truncate">{cashierName}</span>
+                              </span>
+                              {customerName ? (
+                                <span className="text-[10px] text-slate-500 truncate max-w-[85px]" title={`Guest: ${customerName}`}>
+                                  👤 {customerName}
+                                </span>
+                              ) : formattedTime ? (
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {formattedTime}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {/* Order level notes */}
+                            {kot.order?.notes && (
+                              <div className="text-[10px] text-amber-800 font-medium bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                                📌 {kot.order.notes}
+                              </div>
+                            )}
 
                             {/* Items List */}
                             <ul className="space-y-1.5 text-xs text-slate-800 font-medium border-y border-slate-200/60 py-2">
@@ -537,10 +632,11 @@ export default function KitchenDisplay() {
                             {/* Advance Action Button */}
                             <button
                               type="button"
+                              disabled={advancingId === kot._id}
                               onClick={() => advance(kot, col.next)}
-                              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer ${col.buttonBg}`}
+                              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 ${col.buttonBg}`}
                             >
-                              {col.actionText}
+                              {advancingId === kot._id ? "Updating..." : col.actionText}
                             </button>
                           </div>
                         );

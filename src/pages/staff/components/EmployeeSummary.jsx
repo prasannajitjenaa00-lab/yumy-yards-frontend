@@ -40,13 +40,11 @@ export default function EmployeeSummary({
     year: "numeric",
   });
 
-  const userName = user?.name || "Demo Waiter";
-  const userRole = (user?.role || "WAITER").toUpperCase();
+  const userName = user?.name || "Staff Member";
+  const userRole = (user?.role || "CASHIER").toUpperCase();
   const department =
     user?.department ||
-    (userRole === "WAITER"
-      ? "Service Department"
-      : userRole === "KITCHEN" || userRole === "CHEF"
+    (userRole === "KITCHEN" || userRole === "CHEF"
       ? "Kitchen Department"
       : userRole === "CASHIER"
       ? "Billing Department"

@@ -5,25 +5,18 @@ import {
   Store,
   Receipt,
   Percent,
-  Grid,
   Save,
-  PlusCircle,
   Building,
   Phone,
   MapPin,
   CheckCircle2,
+  Info,
 } from "lucide-react";
 import api from "../../services/api";
 
 export default function Settings() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Bulk Table creation state
-  const [tableCount, setTableCount] = useState(5);
-  const [zone, setZone] = useState("Main Hall");
-  const [capacity, setCapacity] = useState(4);
-  const [creatingTables, setCreatingTables] = useState(false);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -51,28 +44,6 @@ export default function Settings() {
     }
   };
 
-  const handleBulkTables = async (e) => {
-    e.preventDefault();
-    if (!tableCount || Number(tableCount) <= 0) {
-      return toast.error("Please enter a valid table count");
-    }
-
-    setCreatingTables(true);
-    try {
-      const res = await api.post("/tables/bulk", {
-        count: Number(tableCount),
-        zone,
-        capacity: Number(capacity),
-      });
-      toast.success(`${res.data.data.length} new tables added to ${zone}`);
-      setTableCount(5);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create tables");
-    } finally {
-      setCreatingTables(false);
-    }
-  };
-
   if (loading || !settings) {
     return (
       <div className="py-20 text-center text-slate-400 space-y-3">
@@ -92,7 +63,7 @@ export default function Settings() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Restaurant Settings</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Configure restaurant identity, GST details, tax rates, and table layout</p>
+            <p className="text-xs text-slate-500 mt-0.5">Configure restaurant identity, GST details, tax rates, and billing options</p>
           </div>
         </div>
       </div>
@@ -223,68 +194,27 @@ export default function Settings() {
           </form>
         </div>
 
-        {/* Right 1 Column: Bulk Create Tables */}
+        {/* Right 1 Column: Information & Quick Tips */}
         <div className="space-y-6">
-          <form onSubmit={handleBulkTables} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Grid className="w-4 h-4 text-purple-500" />
-              <h3 className="text-sm font-bold text-slate-900">Bulk Create Tables</h3>
+              <Info className="w-4 h-4 text-orange-500" />
+              <h3 className="text-sm font-bold text-slate-900">Billing Information</h3>
             </div>
-
-            <p className="text-xs text-slate-500">
-              Quickly add multiple tables to a dining zone with standard seating capacity.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Ensure your GST number and restaurant contact details are up to date. These details will be printed on customer invoices and KOT slips.
             </p>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Number of Tables *</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={tableCount}
-                  onChange={(e) => setTableCount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                  required
-                />
+            <div className="p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-100">
+              <div className="text-[11px] text-slate-600 flex justify-between">
+                <span className="font-medium text-slate-500">Tax Application:</span>
+                <span className="font-semibold text-slate-900">Real-time at POS</span>
               </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Floor Zone *</label>
-                <select
-                  value={zone}
-                  onChange={(e) => setZone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                >
-                  <option value="Main Hall">Main Hall</option>
-                  <option value="Garden">Garden</option>
-                  <option value="Terrace">Terrace</option>
-                  <option value="VIP Section">VIP Section</option>
-                </select>
+              <div className="text-[11px] text-slate-600 flex justify-between">
+                <span className="font-medium text-slate-500">Receipt Header:</span>
+                <span className="font-semibold text-slate-900">Auto-formatted</span>
               </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Capacity per Table</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={creatingTables}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all mt-2 disabled:opacity-50"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>{creatingTables ? "Generating..." : "Bulk Create Tables"}</span>
-              </button>
             </div>
-          </form>
+          </div>
 
           {/* Quick Info Box */}
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 text-xs text-orange-900 space-y-1 shadow-sm">

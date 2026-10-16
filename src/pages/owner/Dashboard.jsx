@@ -7,7 +7,6 @@ import {
   ClipboardList,
   Coins,
   Users,
-  Table2,
   Clock,
   ChefHat,
   CheckCircle2,
@@ -104,7 +103,6 @@ export default function Dashboard() {
   }
 
   const outletCtx = useOutletContext() || {};
-  const totalTablesCount = (data.availableTables || 0) + (data.activeTables || 0);
 
   return (
     <>
@@ -140,20 +138,6 @@ export default function Dashboard() {
             subtitle="↗ 0% vs yesterday"
             icon={Coins}
             colorScheme="blue"
-          />
-          <StatCard
-            title="Active Tables"
-            value={data.activeTables ?? 0}
-            subtitle={`out of ${totalTablesCount || 20} tables`}
-            icon={Users}
-            colorScheme="purple"
-          />
-          <StatCard
-            title="Available Tables"
-            value={data.availableTables ?? 0}
-            subtitle="Total Tables"
-            icon={Table2}
-            colorScheme="pink"
           />
           <StatCard
             title="Pending KOTs"

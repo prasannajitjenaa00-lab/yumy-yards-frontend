@@ -20,7 +20,6 @@ export default function MobileBottomNav({
     if (user?.role === "OWNER") return "/owner/dashboard";
     if (user?.role === "MANAGER") return "/manager/dashboard";
     if (user?.role === "CASHIER") return "/cashier/pos";
-    if (user?.role === "WAITER") return "/waiter/orders";
     if (user?.role === "KITCHEN") return "/kitchen";
     return "/";
   };

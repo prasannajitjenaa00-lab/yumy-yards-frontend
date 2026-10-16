@@ -15,7 +15,6 @@ import AuditLogs from "./pages/owner/AuditLogs";
 import POS from "./pages/pos/POS";
 import Orders from "./pages/orders/Orders";
 import OrderDetails from "./pages/orders/OrderDetails";
-import Tables from "./pages/tables/Tables";
 import KitchenDisplay from "./pages/kitchen/KitchenDisplay";
 import Menu from "./pages/menu/Menu";
 import Inventory from "./pages/inventory/Inventory";
@@ -35,7 +34,6 @@ const ROLE_HOME = {
   OWNER: "/owner/dashboard",
   MANAGER: "/manager/dashboard",
   CASHIER: "/cashier/pos",
-  WAITER: "/waiter/orders",
   KITCHEN: "/kitchen",
 };
 
@@ -65,16 +63,14 @@ export default function App() {
             <Route path="/manager/dashboard" element={<ManagerDashboard />} />
           </Route>
 
-          <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "CASHIER", "WAITER"]} />}>
+          <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "CASHIER"]} />}>
             <Route path="/pos" element={<POS />} />
             <Route path="/cashier/pos" element={<POS />} />
           </Route>
 
-          <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"]} />}>
+          <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "CASHIER", "KITCHEN"]} />}>
             <Route path="/orders" element={<Orders />} />
-            <Route path="/waiter/orders" element={<Orders />} />
             <Route path="/orders/:id" element={<OrderDetails />} />
-            <Route path="/tables" element={<Tables />} />
             <Route path="/staff/attendance" element={<Attendance />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/employee/dashboard" element={<Attendance />} />
@@ -85,7 +81,7 @@ export default function App() {
             <Route path="/holidays" element={<HolidayManagement />} />
           </Route>
 
-          <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "KITCHEN"]} />}>
+          <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "CASHIER", "KITCHEN"]} />}>
             <Route path="/kitchen" element={<KitchenDisplay />} />
           </Route>
 

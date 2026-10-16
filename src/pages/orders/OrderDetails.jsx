@@ -83,8 +83,6 @@ export default function OrderDetails() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showConfirmBillModal, setShowConfirmBillModal] = useState(false);
   const [showServeModal, setShowServeModal] = useState(false);
-  const [showForceClearModal, setShowForceClearModal] = useState(false);
-  const [showMoreActions, setShowMoreActions] = useState(false);
 
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -146,9 +144,9 @@ export default function OrderDetails() {
     if (order.createdAt) {
       list.push({
         title: "Order created",
-        description: `Order #${order.orderNumber} initialized for ${order.table ? `Table ${order.table.number}` : order.orderType}`,
-        user: order.createdBy?.name || "Waiter",
-        role: "WAITER",
+        description: `Order #${order.orderNumber} initialized for ${order.orderType}`,
+        user: order.createdBy?.name || "Staff",
+        role: order.createdBy?.role || "STAFF",
         time: new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         color: "bg-blue-500",
       });
@@ -173,11 +171,11 @@ export default function OrderDetails() {
           color = "bg-emerald-500";
         } else if (sh.newStatus === "SERVED") {
           title = "Order served";
-          desc = `Served to customer at ${order.table ? `Table ${order.table.number}` : order.orderType}`;
+          desc = `Served to customer (${order.orderType})`;
           color = "bg-teal-500";
         } else if (sh.newStatus === "COMPLETED") {
           title = "Order completed";
-          desc = "Order closed and table liberated";
+          desc = "Order closed successfully";
           color = "bg-emerald-600";
         }
 
@@ -195,9 +193,9 @@ export default function OrderDetails() {
     if (order.billRequestedAt) {
       list.push({
         title: "Bill requested",
-        description: "Waiter submitted bill request to cashier",
-        user: order.billRequestedBy?.name || "Waiter",
-        role: "WAITER",
+        description: "Bill request submitted to cashier",
+        user: order.billRequestedBy?.name || "Staff",
+        role: "STAFF",
         time: new Date(order.billRequestedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         color: "bg-amber-500",
       });
@@ -253,7 +251,6 @@ export default function OrderDetails() {
   }
 
   // Role permissions
-  const isWaiter = user?.role === "WAITER";
   const isKitchen = user?.role === "KITCHEN";
   const isCashier = user?.role === "CASHIER";
   const isManager = user?.role === "MANAGER";
@@ -261,8 +258,7 @@ export default function OrderDetails() {
 
   const canManageKitchen = ["OWNER", "MANAGER", "KITCHEN"].includes(user?.role);
   const canProcessBill = ["OWNER", "MANAGER", "CASHIER"].includes(user?.role);
-  const canOverrideTable = ["OWNER", "MANAGER"].includes(user?.role);
-  const canServeOrder = ["OWNER", "MANAGER", "WAITER"].includes(user?.role);
+  const canServeOrder = ["OWNER", "MANAGER", "CASHIER", "KITCHEN"].includes(user?.role);
 
   const effectiveBillStatus = order.billStatus || "NOT_REQUESTED";
   const isBillRequested = effectiveBillStatus === "REQUESTED";
@@ -350,7 +346,8 @@ export default function OrderDetails() {
     setActionLoading(true);
     try {
       await requestBill(order._id);
-      toast.success(`Bill requested for Table ${order.table?.number || ""}`);
+      const targetLabel = order.table?.number ? `Table ${order.table.number}` : `Order #${order.orderNumber}`;
+      toast.success(`Bill requested for ${targetLabel}`);
       setShowConfirmBillModal(false);
       loadData();
     } catch (err) {
@@ -368,36 +365,6 @@ export default function OrderDetails() {
       loadData();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to process bill");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleNormalClearTable = async () => {
-    if (!isPaid || order.orderStatus !== "COMPLETED") {
-      return toast.error("Table can only be cleared after payment and order completion.");
-    }
-    setActionLoading(true);
-    try {
-      await clearTable(order._id);
-      toast.success("Table cleared and set to AVAILABLE");
-      loadData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to clear table");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleForceClearTable = async () => {
-    setActionLoading(true);
-    try {
-      await clearTable(order._id);
-      toast.warning("Table force-cleared by manager override.");
-      setShowForceClearModal(false);
-      loadData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to force clear table");
     } finally {
       setActionLoading(false);
     }
@@ -423,13 +390,24 @@ export default function OrderDetails() {
     }
   };
 
-  const handleInvoice = async () => {
+  const handleInvoice = async (openPrint = false) => {
+    setActionLoading(true);
     try {
-      const res = await generateInvoice(order._id);
-      setInvoice(res.data);
-      toast.success("Invoice generated successfully");
+      let invData = invoice;
+      if (!invData) {
+        const res = await generateInvoice(order._id);
+        invData = res.data;
+        setInvoice(invData);
+        toast.success("Bill / Invoice generated successfully");
+      }
+      await loadData();
+      if (openPrint) {
+        setShowPrintModal(true);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || "Invoice generation failed");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -458,12 +436,14 @@ export default function OrderDetails() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Order Details</h1>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${ORDER_STATUS_BADGES[order.orderStatus] || "bg-slate-100 text-slate-700"
-                  }`}
-              >
-                {order.orderStatus}
-              </span>
+              {!isCashier && (
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${ORDER_STATUS_BADGES[order.orderStatus] || "bg-slate-100 text-slate-700"
+                    }`}
+                >
+                  {order.orderStatus}
+                </span>
+              )}
               <span
                 className={`px-3 py-1 rounded-full text-xs font-bold border ${PAYMENT_STATUS_BADGES[order.paymentStatus] || "bg-slate-100 text-slate-700"
                   }`}
@@ -488,7 +468,7 @@ export default function OrderDetails() {
               <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Order Number</p>
               <p className="font-bold text-slate-900 text-sm">{order.orderNumber}</p>
               <p className="text-[10px] text-slate-500 font-medium">
-                {order.orderType} {order.table ? `• Table ${order.table.number}` : ""}
+                {order.orderType === "TAKEAWAY" ? "Takeaway" : "Counter Dine-In"}
               </p>
             </div>
             <div className="border-l border-slate-200 pl-4 space-y-0.5">
@@ -535,20 +515,20 @@ export default function OrderDetails() {
 
               <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold">
-                  <Grid className="w-4 h-4 text-blue-500" />
-                  <span>Table Number</span>
+                  <ChefHat className="w-4 h-4 text-orange-500" />
+                  <span>KOT Status</span>
                 </div>
                 <p className="text-xs font-bold text-slate-900">
-                  {order.table ? `Table ${order.table.number}` : "N/A"}
+                  {hasSentKOT ? "Sent to Kitchen" : "Not Sent"}
                 </p>
               </div>
 
               <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold">
-                  <Users className="w-4 h-4 text-purple-500" />
-                  <span>Guests</span>
+                  <CreditCard className="w-4 h-4 text-emerald-500" />
+                  <span>Payment</span>
                 </div>
-                <p className="text-xs font-bold text-slate-900">{order.guests || 2}</p>
+                <p className="text-xs font-bold text-slate-900">{order.paymentStatus}</p>
               </div>
 
               <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 space-y-1">
@@ -696,269 +676,191 @@ export default function OrderDetails() {
 
         {/* Right Column (Kitchen Workflow, Table Status, Bill Status, Payment) */}
         <div className="space-y-6">
-          {/* Kitchen Workflow Card (Visual Stepper & Action Controls) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
-                  <ChefHat className="w-4 h-4" />
+          {/* Kitchen Workflow Card (Visual Stepper & Action Controls) - Hidden for Cashier */}
+          {!isCashier && (
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
+                    <ChefHat className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">Kitchen Workflow</h3>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900">Kitchen Workflow</h3>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200/60">
-                KOT: {order.orderStatus}
-              </span>
-            </div>
-
-            {/* Visual Timeline Stepper (6 Steps) */}
-            <div className="grid grid-cols-6 gap-1 text-[9px] font-semibold text-slate-400 pt-1 text-center">
-              {/* Step 1: Created */}
-              <div className="space-y-1">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep1Done ? "bg-emerald-500 text-white border-emerald-500" : "bg-slate-100 text-slate-400"
-                    }`}
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-slate-700 block truncate">Created</span>
-              </div>
-
-              {/* Step 2: KOT Sent */}
-              <div className="space-y-1">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep2Done
-                      ? "bg-emerald-500 text-white border-emerald-500"
-                      : order.orderStatus === "CONFIRMED"
-                        ? "bg-orange-500 text-white border-orange-500 animate-pulse"
-                        : "bg-slate-100 text-slate-400 border-slate-200"
-                    }`}
-                >
-                  {isStep2Done ? <Check className="w-3.5 h-3.5" /> : <span>2</span>}
-                </div>
-                <span className={order.orderStatus === "CONFIRMED" ? "text-orange-600 font-bold block" : "block"}>
-                  Sent
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200/60">
+                  KOT: {order.orderStatus}
                 </span>
               </div>
 
-              {/* Step 3: Accepted */}
-              <div className="space-y-1">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep3Done
-                      ? "bg-emerald-500 text-white border-emerald-500"
-                      : "bg-slate-100 text-slate-400 border-slate-200"
-                    }`}
-                >
-                  {isStep3Done ? <Check className="w-3.5 h-3.5" /> : <span>3</span>}
+              {/* Visual Timeline Stepper (6 Steps) */}
+              <div className="grid grid-cols-6 gap-1 text-[9px] font-semibold text-slate-400 pt-1 text-center">
+                {/* Step 1: Created */}
+                <div className="space-y-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep1Done ? "bg-emerald-500 text-white border-emerald-500" : "bg-slate-100 text-slate-400"
+                      }`}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-slate-700 block truncate">Created</span>
                 </div>
-                <span className="block truncate">Accepted</span>
-              </div>
 
-              {/* Step 4: Preparing */}
-              <div className="space-y-1">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep4Done
-                      ? "bg-emerald-500 text-white border-emerald-500"
-                      : order.orderStatus === "PREPARING"
-                        ? "bg-amber-500 text-white border-amber-500 animate-pulse"
-                        : "bg-slate-100 text-slate-400 border-slate-200"
-                    }`}
-                >
-                  {isStep4Done ? <Check className="w-3.5 h-3.5" /> : <span>4</span>}
-                </div>
-                <span className={order.orderStatus === "PREPARING" ? "text-amber-600 font-bold block" : "block"}>
-                  Preparing
-                </span>
-              </div>
-
-              {/* Step 5: Ready */}
-              <div className="space-y-1">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep5Done
-                      ? "bg-emerald-500 text-white border-emerald-500"
-                      : order.orderStatus === "READY"
-                        ? "bg-emerald-500 text-white border-emerald-500 shadow-sm animate-bounce"
-                        : "bg-slate-100 text-slate-400 border-slate-200"
-                    }`}
-                >
-                  {isStep5Done || order.orderStatus === "READY" ? <Check className="w-3.5 h-3.5" /> : <span>5</span>}
-                </div>
-                <span className={order.orderStatus === "READY" ? "text-emerald-600 font-bold block" : "block"}>
-                  Ready
-                </span>
-              </div>
-
-              {/* Step 6: Served */}
-              <div className="space-y-1">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep6Done || order.orderStatus === "SERVED"
-                      ? "bg-teal-600 text-white border-teal-600"
-                      : "bg-slate-100 text-slate-400 border-slate-200"
-                    }`}
-                >
-                  {isStep6Done || order.orderStatus === "SERVED" ? <Check className="w-3.5 h-3.5" /> : <span>6</span>}
-                </div>
-                <span className={order.orderStatus === "SERVED" ? "text-teal-700 font-bold block" : "block"}>
-                  Served
-                </span>
-              </div>
-            </div>
-
-            {/* Status Announcement Box */}
-            <div className="space-y-2 pt-2 text-xs">
-              {order.orderStatus === "READY" && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-800 space-y-1">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>🟢 Food is Ready! Serve to customer.</span>
-                  </p>
-                  <p className="text-[11px] text-emerald-700">All items prepared by kitchen. Waiter must mark as served.</p>
-                </div>
-              )}
-
-              {/* ACTION 1: Send KOT to Kitchen (Only if not sent yet) */}
-              {!hasSentKOT && (
-                <button
-                  onClick={handleSendKOT}
-                  disabled={actionLoading}
-                  className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Send KOT to Kitchen</span>
-                </button>
-              )}
-
-              {/* ACTION 2: Waiter Action -> [ Mark as Served ] (Only shown when KOT = READY) */}
-              {order.orderStatus === "READY" && canServeOrder && (
-                <button
-                  onClick={() => setShowServeModal(true)}
-                  disabled={actionLoading}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs py-3 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all animate-pulse"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>✓ Mark as Served</span>
-                </button>
-              )}
-
-              {/* KITCHEN STAFF ACTIONS: Based on state */}
-              {canManageKitchen && !isWaiter && (
-                <>
-                  {order.orderStatus === "CONFIRMED" && (
-                    <button
-                      onClick={() => handleKitchenAdvance("PREPARING")}
-                      disabled={actionLoading}
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
-                    >
-                      <ChefHat className="w-4 h-4" />
-                      <span>Start Preparing</span>
-                    </button>
-                  )}
-
-                  {order.orderStatus === "PREPARING" && (
-                    <button
-                      onClick={() => handleKitchenAdvance("READY")}
-                      disabled={actionLoading}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Mark as Ready</span>
-                    </button>
-                  )}
-                </>
-              )}
-
-              {/* Cancel Order Button */}
-              {(!isWaiter || !hasSentKOT) && !["COMPLETED", "CANCELLED", "REFUNDED"].includes(order.orderStatus) && (
-                <button
-                  onClick={handleCancel}
-                  disabled={actionLoading}
-                  className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
-                >
-                  <XCircle className="w-4 h-4" />
-                  <span>Cancel Order</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Table Status Card (Requirement 13 & 14 & 15) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
-                  <Grid className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">Table Status</h3>
-              </div>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${order.orderStatus === "COMPLETED"
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                    : "bg-amber-100 text-amber-800 border-amber-300"
-                  }`}
-              >
-                {order.orderStatus === "COMPLETED" ? "🟢 AVAILABLE" : "🟠 OCCUPIED"}
-              </span>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Assigned Table</span>
-                  <span className="font-bold text-slate-900 text-sm">
-                    {order.table ? `Table ${order.table.number}` : "N/A"}
+                {/* Step 2: KOT Sent */}
+                <div className="space-y-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep2Done
+                        ? "bg-emerald-500 text-white border-emerald-500"
+                        : order.orderStatus === "CONFIRMED"
+                          ? "bg-orange-500 text-white border-orange-500 animate-pulse"
+                          : "bg-slate-100 text-slate-400 border-slate-200"
+                      }`}
+                  >
+                    {isStep2Done ? <Check className="w-3.5 h-3.5" /> : <span>2</span>}
+                  </div>
+                  <span className={order.orderStatus === "CONFIRMED" ? "text-orange-600 font-bold block" : "block"}>
+                    Sent
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Guests Count</span>
-                  <span className="font-semibold text-slate-800">{order.guests || 2} Guests</span>
+
+                {/* Step 3: Accepted */}
+                <div className="space-y-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep3Done
+                        ? "bg-emerald-500 text-white border-emerald-500"
+                        : "bg-slate-100 text-slate-400 border-slate-200"
+                      }`}
+                  >
+                    {isStep3Done ? <Check className="w-3.5 h-3.5" /> : <span>3</span>}
+                  </div>
+                  <span className="block truncate">Accepted</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Active Order</span>
-                  <span className="font-mono text-orange-600 font-bold">#{order.orderNumber}</span>
+
+                {/* Step 4: Preparing */}
+                <div className="space-y-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep4Done
+                        ? "bg-emerald-500 text-white border-emerald-500"
+                        : order.orderStatus === "PREPARING"
+                          ? "bg-amber-500 text-white border-amber-500 animate-pulse"
+                          : "bg-slate-100 text-slate-400 border-slate-200"
+                      }`}
+                  >
+                    {isStep4Done ? <Check className="w-3.5 h-3.5" /> : <span>4</span>}
+                  </div>
+                  <span className={order.orderStatus === "PREPARING" ? "text-amber-600 font-bold block" : "block"}>
+                    Preparing
+                  </span>
+                </div>
+
+                {/* Step 5: Ready */}
+                <div className="space-y-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep5Done
+                        ? "bg-emerald-500 text-white border-emerald-500"
+                        : order.orderStatus === "READY"
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-sm animate-bounce"
+                          : "bg-slate-100 text-slate-400 border-slate-200"
+                      }`}
+                  >
+                    {isStep5Done || order.orderStatus === "READY" ? <Check className="w-3.5 h-3.5" /> : <span>5</span>}
+                  </div>
+                  <span className={order.orderStatus === "READY" ? "text-emerald-600 font-bold block" : "block"}>
+                    Ready
+                  </span>
+                </div>
+
+                {/* Step 6: Served */}
+                <div className="space-y-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto border ${isStep6Done || order.orderStatus === "SERVED"
+                        ? "bg-teal-600 text-white border-teal-600"
+                        : "bg-slate-100 text-slate-400 border-slate-200"
+                      }`}
+                  >
+                    {isStep6Done || order.orderStatus === "SERVED" ? <Check className="w-3.5 h-3.5" /> : <span>6</span>}
+                  </div>
+                  <span className={order.orderStatus === "SERVED" ? "text-teal-700 font-bold block" : "block"}>
+                    Served
+                  </span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                The table remains <span className="font-semibold text-slate-800">OCCUPIED</span> while order is active. It automatically becomes available after full payment and order completion.
-              </p>
+              {/* Status Announcement Box */}
+              <div className="space-y-2 pt-2 text-xs">
+                {order.orderStatus === "READY" && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-800 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>🟢 Food is Ready! Serve to customer.</span>
+                    </p>
+                    <p className="text-[11px] text-emerald-700">All items prepared by kitchen. Order is ready to serve.</p>
+                  </div>
+                )}
 
-              {/* Table Clear Button (Only after PAID & COMPLETED) */}
-              {isPaid && order.orderStatus === "COMPLETED" && order.table && (
-                <button
-                  onClick={handleNormalClearTable}
-                  disabled={actionLoading}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Clear & Free Table</span>
-                </button>
-              )}
-
-              {/* Owner / Manager Override Section (Requirement 15) */}
-              {canOverrideTable && !isPaid && order.table && (
-                <div className="pt-2 border-t border-slate-100">
+                {/* ACTION 1: Send KOT to Kitchen (Only if not sent yet) */}
+                {!hasSentKOT && (
                   <button
-                    onClick={() => setShowMoreActions(!showMoreActions)}
-                    className="w-full text-slate-500 hover:text-slate-700 font-semibold text-[11px] py-1 flex items-center justify-between transition-colors"
+                    onClick={handleSendKOT}
+                    disabled={actionLoading}
+                    className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                   >
-                    <span>More Actions (Manager Overrides)</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreActions ? "rotate-180" : ""}`} />
+                    <Send className="w-4 h-4" />
+                    <span>Send KOT to Kitchen</span>
                   </button>
+                )}
 
-                  {showMoreActions && (
-                    <div className="pt-2">
+                {/* ACTION 2: Mark as Served (Only shown when KOT = READY) */}
+                {order.orderStatus === "READY" && canServeOrder && (
+                  <button
+                    onClick={() => setShowServeModal(true)}
+                    disabled={actionLoading}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs py-3 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all animate-pulse"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>✓ Mark as Served</span>
+                  </button>
+                )}
+
+                {/* KITCHEN STAFF ACTIONS: Based on state */}
+                {canManageKitchen && (
+                  <>
+                    {order.orderStatus === "CONFIRMED" && (
                       <button
-                        onClick={() => setShowForceClearModal(true)}
-                        className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                        onClick={() => handleKitchenAdvance("PREPARING")}
+                        disabled={actionLoading}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
                       >
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                        <span>Force Clear Table</span>
+                        <ChefHat className="w-4 h-4" />
+                        <span>Start Preparing</span>
                       </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+
+                    {order.orderStatus === "PREPARING" && (
+                      <button
+                        onClick={() => handleKitchenAdvance("READY")}
+                        disabled={actionLoading}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Mark as Ready</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* Cancel Order Button */}
+                {!["COMPLETED", "CANCELLED", "REFUNDED"].includes(order.orderStatus) && (
+                  <button
+                    onClick={handleCancel}
+                    disabled={actionLoading}
+                    className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Cancel Order</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Bill Status Card (Requirement 8 & 9) */}
           <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
@@ -980,9 +882,13 @@ export default function OrderDetails() {
             <div className="space-y-3 text-xs">
               {effectiveBillStatus === "NOT_REQUESTED" && (
                 <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-slate-600 space-y-1">
-                  <p className="font-semibold text-slate-800">Bill has not been requested yet.</p>
+                  <p className="font-semibold text-slate-800">
+                    {canProcessBill ? "Ready for Cashier Billing" : "Bill has not been requested yet."}
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    Waiter can request the bill after food is served to customer.
+                    {canProcessBill
+                      ? "As cashier, you can generate the bill and print invoice directly."
+                      : "Bill can be requested from the cashier once customer is ready."}
                   </p>
                 </div>
               )}
@@ -994,7 +900,7 @@ export default function OrderDetails() {
                     <span>🟠 BILL REQUESTED</span>
                   </div>
                   <p className="text-[11px] text-amber-700">
-                    Requested by <span className="font-semibold">{order.billRequestedBy?.name || "Waiter"}</span>. Waiting for Cashier / Manager.
+                    Requested by <span className="font-semibold">{order.billRequestedBy?.name || "Staff"}</span>. Ready for cashier to bill.
                   </p>
                 </div>
               )}
@@ -1005,7 +911,7 @@ export default function OrderDetails() {
                     <Clock className="w-4 h-4 text-blue-600 animate-spin" />
                     <span>BILL PROCESSING</span>
                   </div>
-                  <p className="text-[11px] text-blue-700">Bill is being verified and processed by Cashier.</p>
+                  <p className="text-[11px] text-blue-700">Bill is being verified and prepared by Cashier.</p>
                 </div>
               )}
 
@@ -1015,7 +921,7 @@ export default function OrderDetails() {
                     <FileCheck className="w-4 h-4 text-purple-600" />
                     <span>BILL GENERATED</span>
                   </div>
-                  <p className="text-[11px] text-purple-700">Invoice ready for payment collection.</p>
+                  <p className="text-[11px] text-purple-700">Invoice created & ready for customer payment.</p>
                 </div>
               )}
 
@@ -1029,27 +935,41 @@ export default function OrderDetails() {
                 </div>
               )}
 
-              {/* Waiter Action: Request Bill Button */}
-              {effectiveBillStatus === "NOT_REQUESTED" && !["CANCELLED", "COMPLETED"].includes(order.orderStatus) && (
+              {/* CASHIER / MANAGER DIRECT BILLING ACTIONS (No waiting/requesting) */}
+              {canProcessBill && !["CANCELLED"].includes(order.orderStatus) && (
+                <div className="space-y-2 pt-1">
+                  {!invoice && !isBillGenerated && !isPaid && (
+                    <button
+                      onClick={() => handleInvoice(true)}
+                      disabled={actionLoading}
+                      className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      <span>{isBillRequested ? "Accept & Generate Bill" : "Generate & Print Bill"}</span>
+                    </button>
+                  )}
+
+                  {(invoice || isBillGenerated || isPaid) && (
+                    <button
+                      onClick={() => setShowPrintModal(true)}
+                      className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4 text-orange-400" />
+                      <span>{isPaid ? "Print Paid Receipt" : "Print Customer Bill"}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ONLY non-cashier table staff (e.g. Waiters) see the request button */}
+              {!canProcessBill && effectiveBillStatus === "NOT_REQUESTED" && !["CANCELLED", "COMPLETED"].includes(order.orderStatus) && (
                 <button
                   onClick={() => setShowConfirmBillModal(true)}
                   disabled={actionLoading}
                   className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
                 >
                   <Receipt className="w-4 h-4" />
-                  <span>Request Bill</span>
-                </button>
-              )}
-
-              {/* Cashier/Manager Action: Process Bill */}
-              {canProcessBill && isBillRequested && (
-                <button
-                  onClick={handleProcessBill}
-                  disabled={actionLoading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Process Bill</span>
+                  <span>Request Bill from Cashier</span>
                 </button>
               )}
             </div>
@@ -1078,80 +998,72 @@ export default function OrderDetails() {
               <p className="text-3xl font-black text-slate-900">₹{order.grandTotal}</p>
             </div>
 
-            {/* Payment Controls - Locked before bill request */}
-            {effectiveBillStatus === "NOT_REQUESTED" ? (
-              <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 text-center space-y-1 text-slate-500 text-xs">
-                <ShieldAlert className="w-4 h-4 text-slate-400 mx-auto" />
-                <p className="font-semibold text-slate-700">Payment Controls Locked</p>
-                <p className="text-[11px]">Payment processing unlocks after waiter requests the bill.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Payment Method</label>
-                  <select
-                    value={payMethod}
-                    onChange={(e) => setPayMethod(e.target.value)}
-                    disabled={isPaid}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-60"
-                  >
-                    <option value="CASH">Cash</option>
-                    <option value="UPI">UPI</option>
-                    <option value="CARD">Card</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Amount Paid</label>
-                  <input
-                    type="number"
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(e.target.value)}
-                    disabled={isPaid}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-60"
-                  />
-                </div>
-
-                {canProcessBill && (
-                  <button
-                    onClick={handlePay}
-                    disabled={isPaid || actionLoading}
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>{isPaid ? "✓ Payment Recorded" : "Record Payment"}</span>
-                  </button>
-                )}
-
-                {canProcessBill && (
-                  <button
-                    onClick={handleInvoice}
-                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
-                  >
-                    <FileCheck className="w-4 h-4 text-slate-500" />
-                    <span>{invoice ? "Invoice Generated ✓" : "Generate Invoice"}</span>
-                  </button>
-                )}
-
-                {/* Print Invoice Button - Enabled only when invoice exists */}
-                <button
-                  onClick={() => setShowPrintModal(true)}
-                  disabled={!invoice && !isBillGenerated && !isPaid}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            {/* Payment Controls */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Payment Method</label>
+                <select
+                  value={payMethod}
+                  onChange={(e) => setPayMethod(e.target.value)}
+                  disabled={isPaid}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-60"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Invoice</span>
-                </button>
-
-                {invoice && (
-                  <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl text-center text-blue-900 font-mono text-[11px]">
-                    Invoice #{invoice.invoiceNumber}
-                  </div>
-                )}
+                  <option value="CASH">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
-            )}
+
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Amount Paid</label>
+                <input
+                  type="number"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  disabled={isPaid}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-60"
+                />
+              </div>
+
+              {canProcessBill && (
+                <button
+                  onClick={handlePay}
+                  disabled={isPaid || actionLoading}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>{isPaid ? "✓ Payment Recorded" : "Record Payment"}</span>
+                </button>
+              )}
+
+              {canProcessBill && (
+                <button
+                  onClick={handleInvoice}
+                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+                >
+                  <FileCheck className="w-4 h-4 text-slate-500" />
+                  <span>{invoice ? "Invoice Generated ✓" : "Generate Invoice"}</span>
+                </button>
+              )}
+
+              {/* Print Invoice Button - Enabled only when invoice exists */}
+              <button
+                onClick={() => setShowPrintModal(true)}
+                disabled={!invoice && !isBillGenerated && !isPaid}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Invoice</span>
+              </button>
+
+              {invoice && (
+                <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl text-center text-blue-900 font-mono text-[11px]">
+                  Invoice #{invoice.invoiceNumber}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1198,7 +1110,7 @@ export default function OrderDetails() {
             <div className="text-center space-y-1">
               <h3 className="text-base font-bold text-slate-900">Request Bill</h3>
               <p className="text-xs text-slate-600">
-                Request bill for Table {order.table?.number || "N/A"}? (Total: ₹{order.grandTotal})
+                Request bill for order #{order.orderNumber}? (Total: ₹{order.grandTotal})
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-2">
@@ -1214,38 +1126,6 @@ export default function OrderDetails() {
                 className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm transition-all disabled:opacity-50"
               >
                 {actionLoading ? "Requesting..." : "Request Bill"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal: Manager Override Force Clear Table */}
-      {showForceClearModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150 border border-rose-100">
-            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div className="text-center space-y-2">
-              <h3 className="text-base font-bold text-slate-900">Force Clear Table</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                This order is still active or unpaid. Clearing Table {order.table?.number || "N/A"} may leave the order open. Continue?
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => setShowForceClearModal(false)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2.5 rounded-xl transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleForceClearTable}
-                disabled={actionLoading}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm transition-all disabled:opacity-50"
-              >
-                {actionLoading ? "Clearing..." : "Force Clear"}
               </button>
             </div>
           </div>

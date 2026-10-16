@@ -26,14 +26,8 @@ const ROLE_INFO = {
   CASHIER: {
     title: "Cashier",
     badge: "bg-amber-100 text-amber-700 border-amber-200",
-    desc: "POS billing, table orders, customer management, payment collection, and personal attendance.",
+    desc: "POS billing, customer management, payment collection, and personal attendance.",
     level: "Billing Access",
-  },
-  WAITER: {
-    title: "Captain / Waiter",
-    badge: "bg-blue-100 text-blue-700 border-blue-200",
-    desc: "Table occupancy, taking new dine-in orders, viewing order statuses, and attendance tracking.",
-    level: "Service Access",
   },
   KITCHEN: {
     title: "Kitchen Staff / Chef",
@@ -45,9 +39,8 @@ const ROLE_INFO = {
 
 const PERMISSIONS = [
   // Operations & POS
-  { id: "pos", name: "POS & Billing", category: "Operations", roles: ["OWNER", "MANAGER", "CASHIER", "WAITER"] },
-  { id: "orders", name: "Order Management & Details", category: "Operations", roles: ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"] },
-  { id: "tables", name: "Table Status & Assignment", category: "Operations", roles: ["OWNER", "MANAGER", "CASHIER", "WAITER"] },
+  { id: "pos", name: "POS & Billing", category: "Operations", roles: ["OWNER", "MANAGER", "CASHIER"] },
+  { id: "orders", name: "Order Management & Details", category: "Operations", roles: ["OWNER", "MANAGER", "CASHIER", "KITCHEN"] },
   { id: "kitchen", name: "Kitchen Display (KDS)", category: "Operations", roles: ["OWNER", "MANAGER", "KITCHEN"] },
 
   // Catalog & Inventory
@@ -58,10 +51,10 @@ const PERMISSIONS = [
 
   // Staff & HR
   { id: "staff", name: "Staff Account Creation & Edit", category: "Staff & HR", roles: ["OWNER", "MANAGER"] },
-  { id: "attendance", name: "Attendance Marking & History", category: "Staff & HR", roles: ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"] },
+  { id: "attendance", name: "Attendance Marking & History", category: "Staff & HR", roles: ["OWNER", "MANAGER", "CASHIER", "KITCHEN"] },
   { id: "leave_mgmt", name: "Leave Approval & Balances", category: "Staff & HR", roles: ["OWNER", "MANAGER"] },
-  { id: "my_leave", name: "Self-Service Leave Application", category: "Staff & HR", roles: ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"] },
-  { id: "holidays", name: "Holiday & Off Days Calendar", category: "Staff & HR", roles: ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"] },
+  { id: "my_leave", name: "Self-Service Leave Application", category: "Staff & HR", roles: ["OWNER", "MANAGER", "CASHIER", "KITCHEN"] },
+  { id: "holidays", name: "Holiday & Off Days Calendar", category: "Staff & HR", roles: ["OWNER", "MANAGER", "CASHIER", "KITCHEN"] },
 
   // Finance & Accounting
   { id: "expenses", name: "Expense Logging & Petty Cash", category: "Finance", roles: ["OWNER", "MANAGER", "CASHIER"] },
@@ -80,7 +73,7 @@ export default function RolePermissionsModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const rolesList = ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"];
+  const rolesList = ["OWNER", "MANAGER", "CASHIER", "KITCHEN"];
 
   const filteredPermissions = PERMISSIONS.filter((p) => {
     const matchSearch =

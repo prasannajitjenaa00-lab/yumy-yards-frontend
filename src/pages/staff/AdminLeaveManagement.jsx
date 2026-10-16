@@ -428,7 +428,7 @@ export default function AdminLeaveManagement() {
                     </td>
 
                     <td className="py-3.5 px-4 font-semibold text-slate-600">
-                      {l.employee?.role === "WAITER" ? "Service" : l.employee?.role === "KITCHEN" ? "Kitchen" : "Management"}
+                      {l.employee?.role === "CASHIER" ? "Billing" : l.employee?.role === "KITCHEN" ? "Kitchen" : "Management"}
                     </td>
 
                     <td className="py-3.5 px-4">

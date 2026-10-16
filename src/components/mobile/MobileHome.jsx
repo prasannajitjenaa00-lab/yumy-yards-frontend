@@ -80,19 +80,11 @@ export default function MobileHome({ onOpenMore }) {
         <MobileFeatureCard
           label="Orders"
           subtitle="Manage orders"
-          to={userRole === "WAITER" ? "/waiter/orders" : "/orders"}
+          to="/orders"
           icon={ClipboardList}
           iconBg="bg-[#2563eb]"
           cardBg="bg-[#eff6ff] border-[#bfdbfe]/60"
           badge="2"
-        />
-        <MobileFeatureCard
-          label="Tables"
-          subtitle="Table management"
-          to="/tables"
-          icon={LayoutGrid}
-          iconBg="bg-[#8b5cf6]"
-          cardBg="bg-[#f5f3ff] border-[#ddd6fe]/60"
         />
         <MobileFeatureCard
           label="Kitchen Display"

@@ -35,8 +35,8 @@
   import { clearCredentials } from "../store/slices/authSlice";
   import { logout as logoutApi } from "../services/authService";
   import { toast } from "react-toastify";
-  import { getBillRequests, processBill } from "../services/orderService";
-  import { getSocket } from "../socket/socketClient";
+  import { getBillRequests } from "../services/orderService";
+  import { getSocket, disconnectSocket } from "../socket/socketClient";
 
   import MobileHeader from "../components/mobile/MobileHeader";
   import MobileBottomNav from "../components/mobile/MobileBottomNav";
@@ -50,7 +50,6 @@
       { to: "/owner/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/pos", label: "POS", icon: UtensilsCrossed },
       { to: "/orders", label: "Orders", icon: ClipboardList },
-      { to: "/tables", label: "Tables", icon: Table2 },
       { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
       { to: "/menu", label: "Menu", icon: UtensilsCrossed },
       { to: "/inventory", label: "Inventory", icon: Package },
@@ -70,7 +69,6 @@
       { to: "/manager/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/pos", label: "POS", icon: UtensilsCrossed },
       { to: "/orders", label: "Orders", icon: ClipboardList },
-      { to: "/tables", label: "Tables", icon: Table2 },
       { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
       { to: "/menu", label: "Menu", icon: UtensilsCrossed },
       { to: "/inventory", label: "Inventory", icon: Package },
@@ -86,24 +84,17 @@
     ],
     CASHIER: [
       { to: "/cashier/pos", label: "POS", icon: UtensilsCrossed },
+      { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
       { to: "/orders", label: "Orders", icon: ClipboardList },
-      { to: "/tables", label: "Tables", icon: Table2 },
       { to: "/customers", label: "Customers", icon: Users },
       { to: "/payments", label: "Payments", icon: Wallet },
       { to: "/staff/attendance", label: "Attendance", icon: Clock },
       { to: "/staff/leave", label: "My Leave", icon: Coffee },
       { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
     ],
-    WAITER: [
-      { to: "/waiter/orders", label: "Orders", icon: ClipboardList },
-      { to: "/tables", label: "Tables", icon: Table2 },
-      { to: "/pos", label: "New Order", icon: UtensilsCrossed },
-      { to: "/staff/attendance", label: "Attendance", icon: Clock },
-      { to: "/staff/leave", label: "My Leave", icon: Coffee },
-      { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
-    ],
     KITCHEN: [
       { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
+      { to: "/orders", label: "Orders", icon: ClipboardList },
       { to: "/staff/attendance", label: "Attendance", icon: Clock },
       { to: "/staff/leave", label: "My Leave", icon: Coffee },
       { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
@@ -184,6 +175,7 @@
       } catch (e) {
         /* ignore */
       }
+      disconnectSocket();
       dispatch(clearCredentials());
       toast.info("Logged out");
       navigate("/login");
@@ -581,7 +573,7 @@
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <span>Requested by: <strong className="text-slate-800">{req.billRequestedBy?.name || req.createdBy?.name || "Waiter"}</strong></span>
+                      <span>Requested by: <strong className="text-slate-800">{req.billRequestedBy?.name || req.createdBy?.name || "Staff"}</strong></span>
                       <span>{req.billRequestedAt ? new Date(req.billRequestedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now"}</span>
                     </div>
 

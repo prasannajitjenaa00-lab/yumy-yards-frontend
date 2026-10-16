@@ -53,14 +53,6 @@ const QUICK_ROLES = [
     bg: "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700",
     badge: "POS & Billing",
   },
-  {
-    role: "Waiter",
-    email: "waiter@example.com",
-    password: "waiter123",
-    icon: Utensils,
-    bg: "bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700",
-    badge: "Take Orders",
-  },
 ];
 
 export default function Login() {
