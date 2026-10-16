@@ -10,7 +10,6 @@ import {
   Clock,
   ChefHat,
   CheckCircle2,
-  ShoppingBag,
   Package,
   Wallet,
   AlertCircle,
@@ -152,13 +151,6 @@ export default function Dashboard() {
             subtitle="Ready to Serve"
             icon={CheckCircle2}
             colorScheme="teal"
-          />
-          <StatCard
-            title="Unpaid Orders"
-            value={data.unpaidOrders ?? 0}
-            subtitle="Awaiting Payment"
-            icon={ShoppingBag}
-            colorScheme="rose"
           />
           <StatCard
             title="Low Stock Items"
