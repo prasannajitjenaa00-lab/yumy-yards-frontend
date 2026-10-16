@@ -313,7 +313,10 @@ export default function Login() {
                 <span className="text-[10px] text-slate-400 font-medium">Click to autofill</span>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 sm:gap-2.5 w-full">
+              <div 
+                className="grid grid-cols-4 gap-2 sm:gap-2.5 w-full"
+                style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", width: "100%" }}
+              >
                 {QUICK_ROLES.map((roleObj, idx) => {
                   const IconComponent = roleObj.icon;
                   return (
@@ -321,7 +324,7 @@ export default function Login() {
                       key={idx}
                       type="button"
                       onClick={() => handleQuickFill(roleObj)}
-                      className={`py-2.5 px-1 sm:px-2 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all shadow-xs hover:shadow-sm active:scale-95 cursor-pointer ${roleObj.bg} group`}
+                      className={`w-full py-2.5 px-1 sm:px-2 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all shadow-xs hover:shadow-sm active:scale-95 cursor-pointer ${roleObj.bg} group`}
                       title={`Autofill ${roleObj.role}`}
                     >
                       <IconComponent className="w-4 h-4 transition-transform group-hover:scale-110" />

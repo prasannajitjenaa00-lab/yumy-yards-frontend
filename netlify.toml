@@ -8,7 +8,17 @@
   to = "/index.html"
   status = 200
 
-# Cache control header rules for optimized performance
+# Cache control header rules: prevent stale index.html while caching hashed assets
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
