@@ -133,13 +133,6 @@ export default function Dashboard() {
             colorScheme="green"
           />
           <StatCard
-            title="Today's Profit"
-            value={`₹${(data.todaysProfit ?? 0).toLocaleString("en-IN")}`}
-            subtitle="↗ 0% vs yesterday"
-            icon={Coins}
-            colorScheme="blue"
-          />
-          <StatCard
             title="Pending KOTs"
             value={data.pendingKots ?? 0}
             subtitle="In Kitchen"
