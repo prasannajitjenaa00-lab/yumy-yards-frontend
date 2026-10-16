@@ -304,16 +304,16 @@ export default function Login() {
             </div>
 
             {/* Quick Fill Credential Options */}
-            <div className="space-y-2">
+            <div className="space-y-2.5 w-full">
               <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 px-0.5">
-                <span className="flex items-center gap-1 text-slate-700">
+                <span className="flex items-center gap-1.5 text-slate-700">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   <span>Quick Fill Credentials:</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-normal">Click to autofill</span>
+                <span className="text-[10px] text-slate-400 font-medium">Click to autofill</span>
               </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-4 gap-2 sm:gap-2.5 w-full">
                 {QUICK_ROLES.map((roleObj, idx) => {
                   const IconComponent = roleObj.icon;
                   return (
@@ -321,10 +321,11 @@ export default function Login() {
                       key={idx}
                       type="button"
                       onClick={() => handleQuickFill(roleObj)}
-                      className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${roleObj.bg} group`}
+                      className={`py-2.5 px-1 sm:px-2 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all shadow-xs hover:shadow-sm active:scale-95 cursor-pointer ${roleObj.bg} group`}
+                      title={`Autofill ${roleObj.role}`}
                     >
                       <IconComponent className="w-4 h-4 transition-transform group-hover:scale-110" />
-                      <span className="text-xs font-bold">{roleObj.role}</span>
+                      <span className="text-[11px] sm:text-xs font-bold tracking-tight text-center">{roleObj.role}</span>
                     </button>
                   );
                 })}
