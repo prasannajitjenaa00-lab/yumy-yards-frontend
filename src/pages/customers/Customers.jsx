@@ -39,6 +39,28 @@ export default function Customers() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const fetchCustomerDetails = (id) => {
+    if (!id) return;
+    setLoadingOrders(true);
+    api
+      .get(`/customers/${id}`)
+      .then((r) => {
+        if (r.data?.data) {
+          setSelectedCustomer(r.data.data);
+          setCustomerOrders(r.data.data.orders || []);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOrders(false));
+  };
+
+  const handleSelectCustomer = (c) => {
+    setSelectedCustomer(c);
+    fetchCustomerDetails(c._id);
+  };
 
   const loadCustomers = (query = "") => {
     setLoading(true);
@@ -47,8 +69,10 @@ export default function Customers() {
       .then((r) => {
         const list = Array.isArray(r.data?.data) ? r.data.data : [];
         setCustomers(list);
-        if (list.length && !selectedCustomer) {
-          setSelectedCustomer(list[0]);
+        if (list.length) {
+          const first = list[0];
+          setSelectedCustomer(first);
+          fetchCustomerDetails(first._id);
         }
       })
       .catch((e) => console.error(e))
@@ -84,9 +108,20 @@ export default function Customers() {
 
   // Metrics
   const totalCustomersCount = customers.length;
-  const newThisMonthCount = Math.min(customers.length, 32);
+  const newThisMonthCount = customers.length;
   const totalSpendingSum = customers.reduce((s, c) => s + (c.totalSpending || 0), 0);
-  const returningCount = Math.round(customers.length * 0.75);
+  const returningCount = customers.filter((c) => (c.totalOrders || 0) > 1).length;
+
+  const formatLastVisit = (dateStr) => {
+    if (!dateStr) return "Never";
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
 
   // Paginated List
   const totalPages = Math.ceil(customers.length / pageSize) || 1;
@@ -275,7 +310,7 @@ export default function Customers() {
                       return (
                         <tr
                           key={c._id || idx}
-                          onClick={() => setSelectedCustomer(c)}
+                          onClick={() => handleSelectCustomer(c)}
                           className={`cursor-pointer transition-colors ${
                             isSelected ? "bg-orange-50/40 font-semibold" : "hover:bg-slate-50/80"
                           }`}
@@ -297,7 +332,7 @@ export default function Customers() {
                           <td className="py-3.5 px-4 font-extrabold text-slate-900">
                             ₹{(c.totalSpending || 0).toLocaleString("en-IN")}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-500 font-medium">Today</td>
+                          <td className="py-3.5 px-4 text-slate-500 font-medium">{formatLastVisit(c.lastOrderAt)}</td>
                           <td className="py-3.5 px-4">{getLoyaltyBadge(c)}</td>
 
                           <td className="py-3.5 px-4 text-right">
@@ -305,7 +340,7 @@ export default function Customers() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedCustomer(c);
+                                  handleSelectCustomer(c);
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                               >
@@ -412,28 +447,28 @@ export default function Customers() {
             </div>
             <div className="flex items-center gap-2.5">
               <Mail size={14} className="text-slate-400" />
-              <span>{activeProfile.email || "rahul.kumar@email.com"}</span>
+              <span>{activeProfile.email || "No email registered"}</span>
             </div>
             <div className="flex items-center gap-2.5">
               <MapPin size={14} className="text-slate-400" />
-              <span>{activeProfile.address || "Bhubaneswar, Odisha"}</span>
+              <span>{activeProfile.address || "No address provided"}</span>
             </div>
           </div>
 
           {/* 3 Quick Metric Cards */}
           <div className="grid grid-cols-3 gap-2.5 text-center">
             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-              <div className="text-lg font-black text-slate-900">{activeProfile.totalOrders || 12}</div>
+              <div className="text-lg font-black text-slate-900">{activeProfile.totalOrders ?? 0}</div>
               <div className="text-[10px] font-semibold text-slate-400">Total Orders</div>
             </div>
 
             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-              <div className="text-lg font-black text-slate-900">₹{(activeProfile.totalSpending || 4850).toLocaleString("en-IN")}</div>
+              <div className="text-lg font-black text-slate-900">₹{(activeProfile.totalSpending ?? 0).toLocaleString("en-IN")}</div>
               <div className="text-[10px] font-semibold text-slate-400">Total Spending</div>
             </div>
 
             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-              <div className="text-lg font-black text-slate-900">{activeProfile.loyaltyPoints || 320}</div>
+              <div className="text-lg font-black text-slate-900">{activeProfile.loyaltyPoints ?? 0}</div>
               <div className="text-[10px] font-semibold text-slate-400">Loyalty Points</div>
             </div>
           </div>
@@ -442,26 +477,34 @@ export default function Customers() {
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-slate-900">Recent Orders</h4>
-              <span className="text-[11px] font-bold text-orange-600 hover:underline cursor-pointer">View All</span>
+              {customerOrders.length > 0 && (
+                <span className="text-[11px] font-bold text-orange-600">
+                  {customerOrders.length} order(s)
+                </span>
+              )}
             </div>
 
-            <div className="space-y-1.5 text-xs">
-              {[
-                { id: "#1024", date: "18 Sep 2026", total: 420, status: "Completed" },
-                { id: "#1011", date: "15 Sep 2026", total: 280, status: "Completed" },
-                { id: "#0987", date: "10 Sep 2026", total: 650, status: "Completed" },
-                { id: "#0950", date: "05 Sep 2026", total: 320, status: "Completed" },
-                { id: "#0901", date: "28 Aug 2026", total: 540, status: "Completed" },
-              ].map((ord) => (
-                <div key={ord.id} className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100">
-                  <span className="font-bold text-slate-900">{ord.id}</span>
-                  <span className="text-[11px] text-slate-500">{ord.date}</span>
-                  <span className="font-extrabold text-slate-900">₹{ord.total}</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    {ord.status}
-                  </span>
+            <div className="space-y-1.5 text-xs max-h-56 overflow-y-auto scrollbar-thin pr-0.5">
+              {loadingOrders ? (
+                <div className="py-4 text-center text-xs text-slate-400">Loading orders...</div>
+              ) : (activeProfile.orders || customerOrders || []).length > 0 ? (
+                (activeProfile.orders || customerOrders).map((ord) => (
+                  <div key={ord._id || ord.orderNumber} className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100">
+                    <span className="font-bold text-slate-900">#{ord.orderNumber}</span>
+                    <span className="text-[11px] text-slate-500">
+                      {ord.createdAt ? new Date(ord.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "Recent"}
+                    </span>
+                    <span className="font-extrabold text-slate-900">₹{ord.grandTotal}</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {ord.orderStatus || "COMPLETED"}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-xs text-slate-400 font-medium">
+                  No orders placed yet
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
