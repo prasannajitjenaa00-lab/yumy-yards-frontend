@@ -53,7 +53,7 @@ export default function PrintInvoiceModal({ isOpen, onClose, order, invoice, res
   const fssai = restaurantSettings?.fssai || "12024999000012";
   const sacCode = "996331"; // Standard GST SAC Code for Restaurant Services
 
-  const invoiceNumber = invoice?.invoiceNumber || `INV-${order.orderNumber?.replace(/^#?ORD-/, "") || "0001"}`;
+  const invoiceNumber = invoice?.invoiceNumber || `INV-${order.orderNumber?.replace(/^#?ORD-?/, "") || "00001"}`;
   
   const createdDate = order.createdAt ? new Date(order.createdAt) : new Date();
   const dateFormatted = createdDate.toLocaleDateString("en-GB", {
@@ -188,7 +188,7 @@ export default function PrintInvoiceModal({ isOpen, onClose, order, invoice, res
                   <span><b className="font-sans">Time:</b> {timeFormatted}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span><b className="font-sans">Token:</b> #{order.orderNumber?.replace(/^#?ORD-/, "")}</span>
+                  <span><b className="font-sans">Token:</b> {order.orderNumber?.startsWith("#") ? order.orderNumber : `#${order.orderNumber}`}</span>
                   <span><b className="font-sans">Cashier:</b> {cashierName}</span>
                 </div>
                 {(customerName !== "Walk-in Guest" || customerPhone) && (
