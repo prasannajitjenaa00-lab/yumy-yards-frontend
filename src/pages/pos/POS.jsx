@@ -34,10 +34,12 @@ import {
   Banknote,
   QrCode,
   CreditCard,
+  Monitor,
 } from "lucide-react";
 import { getMenu, getCategories } from "../../services/menuService";
 import { createOrder, sendKOT } from "../../services/orderService";
 import { recordPayment } from "../../services/paymentService";
+import api from "../../services/api";
 import PrintInvoiceModal from "../../components/common/PrintInvoiceModal";
 import {
   setOrderType,
@@ -107,7 +109,83 @@ export default function POS() {
   const [taxRate, setTaxRate] = useState(5); // 5% GST standard default
   const [taxPreset, setTaxPreset] = useState("5"); // "0", "5", "12", "18", "custom"
 
+  const isOwnerOrManager = user?.role === "OWNER" || user?.role === "MANAGER";
+
+  // Dynamic Counters from Settings (defaults to Counter 1, Counter 2)
+  const [counters, setCounters] = useState(() => {
+    try {
+      const cached = localStorage.getItem("app_dynamic_counters");
+      return cached ? JSON.parse(cached) : ["Counter 1", "Counter 2"];
+    } catch {
+      return ["Counter 1", "Counter 2"];
+    }
+  });
+  const [showAddCounterModal, setShowAddCounterModal] = useState(false);
+  const [newCounterName, setNewCounterName] = useState("");
+
+  const [selectedCounter, setSelectedCounter] = useState(() => {
+    try {
+      return localStorage.getItem("pos_terminal_counter") || "Counter 1";
+    } catch {
+      return "Counter 1";
+    }
+  });
+
+  const activeCounter = useMemo(() => {
+    const found = counters.find(
+      (c) => (c || "").trim().toLowerCase() === (selectedCounter || "").trim().toLowerCase()
+    );
+    return found || counters[0] || "Counter 1";
+  }, [counters, selectedCounter]);
+
+  const loadCounters = async () => {
+    try {
+      const res = await api.get("/settings");
+      if (res.data?.data?.counters && res.data.data.counters.length) {
+        setCounters(res.data.data.counters);
+        localStorage.setItem("app_dynamic_counters", JSON.stringify(res.data.data.counters));
+      }
+    } catch (e) {
+      console.warn("Could not load counters from settings:", e);
+    }
+  };
+
+  const handleSelectCounter = (counterName) => {
+    setSelectedCounter(counterName);
+    try {
+      localStorage.setItem("pos_terminal_counter", counterName);
+    } catch (e) {
+      console.warn("Storage error:", e);
+    }
+    toast.info(`Switched POS terminal to ${counterName}`);
+  };
+
+  const handleAddNewCounter = async (e) => {
+    e?.preventDefault();
+    const trimmed = newCounterName.trim();
+    if (!trimmed) return;
+    if (counters.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      toast.warning(`Counter "${trimmed}" already exists.`);
+      return;
+    }
+    const updated = [...counters, trimmed];
+    setCounters(updated);
+    handleSelectCounter(trimmed);
+    setNewCounterName("");
+    setShowAddCounterModal(false);
+    try {
+      localStorage.setItem("app_dynamic_counters", JSON.stringify(updated));
+      const res = await api.get("/settings");
+      const currentSettings = res.data?.data || {};
+      await api.put("/settings", { ...currentSettings, counters: updated });
+      toast.success(`Counter "${trimmed}" created and selected!`);
+    } catch (err) {
+      toast.error("Failed to sync counter to server");
+    }
+  };
+
   useEffect(() => {
+    loadCounters();
     getCategories().then((r) => setCategories(r.data || []));
     getMenu({ limit: 200 }).then((r) => setMenu(r.data || []));
   }, []);
@@ -155,6 +233,7 @@ export default function POS() {
     try {
       const payload = {
         orderType: cart.orderType,
+        counter: activeCounter,
         items: cart.items.map((i) => ({
           menuItem: i.menuItem,
           quantity: i.quantity,
@@ -188,6 +267,7 @@ export default function POS() {
       setCompletedOrder({
         _id: res.data._id,
         orderNumber: res.data.orderNumber,
+        counter: selectedCounter,
         kotNumber: kotRes?.data?.kotNumber || `KOT-${String(res.data.orderNumber || "").slice(-4)}`,
         orderType: cart.orderType,
         items: [...cart.items],
@@ -236,26 +316,75 @@ export default function POS() {
       {/* LEFT & CENTER: Menu Workspace */}
       <div className="lg:col-span-2 space-y-5">
         {/* 1. Hero POS Header */}
-        <div className="bg-gradient-to-r from-orange-50/90 via-amber-50/40 to-white border border-orange-100 rounded-2xl p-5 sm:p-6 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
+        <div className="bg-gradient-to-r from-orange-50/90 via-amber-50/40 to-white border border-orange-200/70 rounded-2xl p-5 sm:p-6 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
           <div className="relative z-10">
-            <div className="text-[10px] font-bold text-orange-600 tracking-widest uppercase mb-1">
-              FOOD COURT COUNTER • QUICK SERVICE BILLING
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-orange-100/80 border border-orange-200 text-orange-800 text-[10px] font-black tracking-widest uppercase mb-2 shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-600"></span>
+              </span>
+              <span>Food Court Counter • Quick Service Billing</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Counter <span className="text-orange-500">POS</span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <span>Counter</span>
+              <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">POS</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
-              Take counter orders & instant KOT broadcast to kitchen display 🍴
+            <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium flex items-center gap-1.5">
+              <span>Take counter orders & instant KOT broadcast to kitchen display</span>
+              <span className="text-orange-500">🍴</span>
             </p>
           </div>
 
-          <div className="relative z-10 flex items-center gap-3 shrink-0 self-start md:self-auto">
+          <div className="relative z-10 flex items-center gap-2.5 sm:gap-3 shrink-0 self-start md:self-auto flex-wrap">
+            {/* Dynamic Counters Switcher */}
+            <div className="bg-white/95 backdrop-blur-sm border border-orange-200/90 rounded-2xl p-1.5 flex items-center shadow-xs gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-slate-500 border-r border-slate-200 mr-0.5">
+                <Monitor size={14} className="text-orange-500 shrink-0" />
+                <span>Counter:</span>
+              </div>
+              {counters.map((cName) => {
+                const isSelected = (activeCounter || "").trim().toLowerCase() === (cName || "").trim().toLowerCase();
+                return (
+                  <button
+                    key={cName}
+                    type="button"
+                    onClick={() => handleSelectCounter(cName)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border ${
+                      isSelected
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25 border-orange-600 scale-[1.02]"
+                        : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {isSelected ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
+                    )}
+                    <span>{cName}</span>
+                  </button>
+                );
+              })}
+
+              {/* Owner / Manager Quick + Add Counter Button */}
+              {isOwnerOrManager && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddCounterModal(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-orange-600 bg-orange-50/80 hover:bg-orange-100 border border-dashed border-orange-300 flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                  title="Add New Counter Terminal (Owner & Manager only)"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  <span>Add</span>
+                </button>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={() => navigate("/kitchen")}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-2xl shadow-sm hover:shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95 shrink-0 border border-slate-800"
             >
-              <ChefHat size={16} className="text-orange-400" />
+              <ChefHat size={16} className="text-orange-400 shrink-0" />
               <span>Kitchen Display (KDS)</span>
             </button>
           </div>
@@ -773,7 +902,12 @@ export default function POS() {
                 <div className="text-3xl font-black text-slate-900 font-mono tracking-tight text-orange-600">
                   #{completedOrder.orderNumber}
                 </div>
-                <div className="flex items-center justify-center gap-2 pt-1">
+                <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                  <span className={`font-black text-[11px] px-2.5 py-0.5 rounded-full text-white shadow-2xs ${
+                    completedOrder.counter === "Counter 2" ? "bg-purple-600" : "bg-orange-600"
+                  }`}>
+                    {completedOrder.counter || "Counter 1"}
+                  </span>
                   <span className="bg-orange-100 text-orange-700 font-bold text-[11px] px-2.5 py-0.5 rounded-full">
                     {completedOrder.orderType === "TAKEAWAY" ? "TAKEAWAY" : "COUNTER DINE-IN"}
                   </span>
@@ -923,141 +1057,205 @@ export default function POS() {
       )}
 
       {/* ========================================================= */}
-      {/* THERMAL PRINTABLE TOKEN SLIP (Visible ONLY when printing) */}
+      {/* THERMAL PRINTABLE TOKEN SLIP (Visible ONLY when bill modal is NOT open) */}
       {/* ========================================================= */}
-      {completedOrder && (
-        <div id="printable-pos-token" className="hidden print:block">
-          <div
-            style={{
-              width: "280px",
-              margin: "0 auto",
-              padding: "8px",
-              fontFamily: "Courier, monospace, sans-serif",
-              fontSize: "12px",
-              color: "#000000",
-              backgroundColor: "#ffffff",
-              lineHeight: "1.35",
-            }}
-          >
-            {/* Header */}
-            <div style={{ textAlign: "center", borderBottom: "1px dashed #000", paddingBottom: "6px", marginBottom: "6px" }}>
-              <div style={{ fontSize: "16px", fontWeight: "900", letterSpacing: "1px" }}>YUMMY YARDS</div>
-              <div style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase" }}>Food Court Counter Token</div>
-              <div style={{ fontSize: "9px", color: "#444" }}>Pro Billing Centre • Express Food</div>
-            </div>
-
-            {/* Token Number Highlight */}
-            <div style={{ textAlign: "center", borderBottom: "2px dashed #000", paddingBottom: "8px", marginBottom: "6px" }}>
-              <div style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>
-                TOKEN NUMBER
-              </div>
-              <div style={{ fontSize: "26px", fontWeight: "900", letterSpacing: "1px", margin: "2px 0" }}>
-                #{completedOrder.orderNumber}
-              </div>
-              <div style={{ fontSize: "11px", fontWeight: "bold" }}>
-                {completedOrder.orderType === "TAKEAWAY" ? "TAKEAWAY / PARCEL" : "COUNTER DINE-IN"}
-              </div>
-              <div style={{ fontSize: "10px", color: "#333", marginTop: "2px" }}>
-                {completedOrder.time} • {new Date().toLocaleDateString("en-GB")}
-              </div>
-            </div>
-
-            {/* Cashier / Server Stamp */}
-            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #000", paddingBottom: "4px", marginBottom: "5px", fontSize: "10px" }}>
-              <span><strong>Cashier:</strong> {completedOrder.cashierName || user?.name || "Cashier"}</span>
-              <span><strong>KOT:</strong> #{completedOrder.kotNumber}</span>
-            </div>
-
-            {/* Customer Details */}
-            {(completedOrder.customerName || completedOrder.customerPhone) && (
-              <div style={{ borderBottom: "1px dashed #000", paddingBottom: "5px", marginBottom: "6px", fontSize: "11px" }}>
-                <div><strong>Customer:</strong> {completedOrder.customerName || "Walk-in Guest"}</div>
-                {completedOrder.customerPhone && <div><strong>Phone:</strong> {completedOrder.customerPhone}</div>}
-              </div>
-            )}
-
-            {/* Items Table */}
-            <div style={{ borderBottom: "1px dashed #000", paddingBottom: "6px", marginBottom: "6px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", borderBottom: "1px solid #000", paddingBottom: "3px", marginBottom: "4px", fontSize: "11px" }}>
-                <span style={{ flex: 1 }}>ITEM</span>
-                <span style={{ width: "30px", textAlign: "center" }}>QTY</span>
-                <span style={{ width: "55px", textAlign: "right" }}>AMT</span>
-              </div>
-              {completedOrder.items.map((i, idx) => (
-                <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px", fontSize: "11px" }}>
-                  <span style={{ flex: 1, paddingRight: "4px", wordBreak: "break-word" }}>{i.name}</span>
-                  <span style={{ width: "30px", textAlign: "center", fontWeight: "bold" }}>{i.quantity}</span>
-                  <span style={{ width: "55px", textAlign: "right", fontWeight: "bold" }}>₹{(i.price * i.quantity).toFixed(2)}</span>
+      {completedOrder && !showBillModal && (
+        <>
+          <div id="printable-pos-token" className="hidden print:block">
+            <div
+              style={{
+                width: "76mm",
+                maxWidth: "78mm",
+                margin: "0 auto",
+                padding: "4mm 2mm",
+                fontFamily: "'Courier New', Courier, monospace, sans-serif",
+                fontSize: "12px",
+                color: "#000000",
+                backgroundColor: "#ffffff",
+                lineHeight: "1.35",
+                boxSizing: "border-box",
+              }}
+            >
+              {/* Header */}
+              <div style={{ textAlign: "center", borderBottom: "2px dashed #000", paddingBottom: "6px", marginBottom: "6px" }}>
+                <div style={{ fontSize: "17px", fontWeight: "900", letterSpacing: "1px" }}>YUMMY YARDS</div>
+                <div style={{ fontSize: "12px", fontWeight: "900", textTransform: "uppercase", marginTop: "2px" }}>
+                  {completedOrder.counter || selectedCounter || "Counter 1"}
                 </div>
-              ))}
-            </div>
+                <div style={{ fontSize: "10px", color: "#333", marginTop: "1px" }}>Express Food & Beverage Service</div>
+              </div>
 
-            {/* Totals Breakdown */}
-            <div style={{ borderBottom: "2px dashed #000", paddingBottom: "6px", marginBottom: "6px", fontSize: "11px" }}>
-              {completedOrder.discount > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Discount:</span>
-                  <span>-₹{Number(completedOrder.discount).toFixed(2)}</span>
+              {/* Token Number Highlight (High-Contrast 80mm Thermal Box) */}
+              <div style={{ textAlign: "center", border: "2px solid #000", borderRadius: "4px", padding: "6px 4px", marginBottom: "6px", backgroundColor: "#fff" }}>
+                <div style={{ fontSize: "11px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                  ★ TOKEN NUMBER ★
+                </div>
+                <div style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "2px", margin: "2px 0", lineHeight: "1.1" }}>
+                  #{completedOrder.orderNumber}
+                </div>
+                <div style={{ fontSize: "12px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {completedOrder.orderType === "TAKEAWAY" ? "TAKEAWAY / PARCEL" : "COUNTER DINE-IN"}
+                </div>
+                <div style={{ fontSize: "10px", color: "#222", marginTop: "3px" }}>
+                  {completedOrder.time} • {new Date().toLocaleDateString("en-GB")}
+                </div>
+              </div>
+
+              {/* Cashier & KOT Info (Clean 1-line fit without wrapping) */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px dashed #000", paddingBottom: "4px", marginBottom: "5px", fontSize: "11px" }}>
+                <span style={{ maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <strong>Cashier:</strong> {completedOrder.cashierName || user?.name || "Counter Staff"}
+                </span>
+                <span style={{ fontWeight: "bold", whiteSpace: "nowrap" }}>
+                  KOT: #{String(completedOrder.kotNumber || "").replace(/^#?KOT-?\d*-?/, "") || completedOrder.kotNumber || "001"}
+                </span>
+              </div>
+
+              {/* Customer Details (if present) */}
+              {(completedOrder.customerName || completedOrder.customerPhone) && (
+                <div style={{ borderBottom: "1px dashed #000", paddingBottom: "5px", marginBottom: "6px", fontSize: "11px" }}>
+                  <div><strong>Customer:</strong> {completedOrder.customerName || "Walk-in Guest"}</div>
+                  {completedOrder.customerPhone && <div><strong>Phone:</strong> {completedOrder.customerPhone}</div>}
                 </div>
               )}
-              {completedOrder.taxAmount > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>GST ({completedOrder.taxRate || 5}%):</span>
-                  <span>₹{Number(completedOrder.taxAmount).toFixed(2)}</span>
-                </div>
-              )}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "15px", fontWeight: "900", marginTop: "3px", borderTop: "1px solid #000", paddingTop: "3px" }}>
-                <span>TOTAL:</span>
-                <span>₹{Number(completedOrder.grandTotal).toFixed(2)}</span>
-              </div>
-              <div style={{ fontSize: "11px", fontWeight: "bold", marginTop: "3px" }}>
-                Payment: {completedOrder.isPaid ? `PAID (${completedOrder.paymentMethod || "CASH"})` : "PAYMENT DUE AT COUNTER"}
-              </div>
-            </div>
 
-            {/* Footer */}
-            <div style={{ textAlign: "center", fontSize: "9px", color: "#333", marginTop: "6px", lineHeight: "1.4" }}>
-              <div style={{ fontWeight: "bold" }}>*** PLEASE COLLECT FOOD AT COUNTER ***</div>
-              <div>Thank You & Visit Again!</div>
-              <div style={{ fontSize: "8px", fontWeight: "bold", color: "#555", marginTop: "4px", borderTop: "1px dashed #ccc", paddingTop: "4px", letterSpacing: "0.5px" }}>
-                Powered by Dremonix Solution
+              {/* Items Table */}
+              <div style={{ borderBottom: "2px dashed #000", paddingBottom: "6px", marginBottom: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "900", borderBottom: "1.5px solid #000", paddingBottom: "3px", marginBottom: "5px", fontSize: "11px" }}>
+                  <span style={{ flex: 1 }}>ITEM</span>
+                  <span style={{ width: "35px", textAlign: "center" }}>QTY</span>
+                  <span style={{ width: "65px", textAlign: "right" }}>AMT</span>
+                </div>
+                {completedOrder.items.map((i, idx) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px", fontSize: "11px" }}>
+                    <span style={{ flex: 1, paddingRight: "4px", wordBreak: "break-word", fontWeight: "600" }}>{i.name}</span>
+                    <span style={{ width: "35px", textAlign: "center", fontWeight: "900" }}>{i.quantity}</span>
+                    <span style={{ width: "65px", textAlign: "right", fontWeight: "bold" }}>₹{(i.price * i.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totals Breakdown */}
+              <div style={{ borderBottom: "2px dashed #000", paddingBottom: "6px", marginBottom: "6px", fontSize: "11px" }}>
+                {completedOrder.discount > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Discount:</span>
+                    <span>-₹{Number(completedOrder.discount).toFixed(2)}</span>
+                  </div>
+                )}
+                {completedOrder.taxAmount > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>GST ({completedOrder.taxRate || 5}%):</span>
+                    <span>₹{Number(completedOrder.taxAmount).toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "900", marginTop: "3px", borderTop: "1.5px solid #000", paddingTop: "3px" }}>
+                  <span>TOTAL:</span>
+                  <span>₹{Number(completedOrder.grandTotal).toFixed(2)}</span>
+                </div>
+                <div style={{ fontSize: "11px", fontWeight: "bold", marginTop: "4px" }}>
+                  Status: {completedOrder.isPaid ? `PAID (${completedOrder.paymentMethod || "CASH"}) ✓` : "PAYMENT DUE AT COUNTER"}
+                </div>
+              </div>
+
+              {/* Footer Notice */}
+              <div style={{ textAlign: "center", fontSize: "10px", color: "#111", marginTop: "6px", lineHeight: "1.4" }}>
+                <div style={{ fontWeight: "900", fontSize: "11px" }}>*** PLEASE COLLECT FOOD AT COUNTER ***</div>
+                <div style={{ marginTop: "2px" }}>Keep this token slip until order is served</div>
+                <div style={{ fontSize: "8.5px", fontWeight: "bold", color: "#555", marginTop: "5px", borderTop: "1px dashed #aaa", paddingTop: "4px", letterSpacing: "0.5px" }}>
+                  Powered by Dremonix Solution
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          {/* Print CSS Isolation Rule for 80mm Thermal */}
+          <style>{`
+            @media print {
+              @page {
+                size: 80mm auto;
+                margin: 0mm;
+              }
+
+              /* Hide all application UI, headers, sidebars, modals */
+              body * {
+                visibility: hidden !important;
+              }
+
+              /* Unhide and isolate the printable token slip */
+              #printable-pos-token,
+              #printable-pos-token * {
+                visibility: visible !important;
+              }
+
+              #printable-pos-token {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                right: 0 !important;
+                top: 0 !important;
+                width: 78mm !important;
+                max-width: 80mm !important;
+                margin: 0 auto !important;
+                padding: 2mm 1mm !important;
+                box-sizing: border-box !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+              }
+            }
+          `}</style>
+        </>
       )}
 
-      {/* Print CSS Isolation Rule */}
-      <style>{`
-        @media print {
-          /* Hide all application content, modals, background grids, headers, navbars */
-          body * {
-            visibility: hidden !important;
-          }
-
-          /* Unhide and isolate the printable token slip */
-          #printable-pos-token,
-          #printable-pos-token * {
-            visibility: visible !important;
-          }
-
-          #printable-pos-token {
-            display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-          }
-
-          @page {
-            margin: 0mm;
-            size: auto;
-          }
-        }
-      `}</style>
+      {/* Quick Add Counter Modal (Owner & Manager only) */}
+      {showAddCounterModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <h3 className="font-bold text-sm text-slate-900">Add Counter Terminal</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCounterModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Enter counter name (e.g. <b>Counter 3</b>, <b>Juice Bar</b>, <b>Takeaway Desk</b>). It will be available for POS billing and Kitchen Display.
+            </p>
+            <form onSubmit={handleAddNewCounter} className="space-y-3">
+              <input
+                type="text"
+                placeholder="e.g. Counter 3"
+                value={newCounterName}
+                onChange={(e) => setNewCounterName(e.target.value)}
+                autoFocus
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3.5 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                required
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCounterModal(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+                >
+                  Create Counter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

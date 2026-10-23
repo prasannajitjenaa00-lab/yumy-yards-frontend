@@ -11,12 +11,32 @@ import {
   MapPin,
   CheckCircle2,
   Info,
+  Monitor,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import api from "../../services/api";
 
 export default function Settings() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [newCounterInput, setNewCounterInput] = useState("");
+
+  const handleAddCounter = () => {
+    const trimmed = newCounterInput.trim();
+    if (!trimmed) return;
+    const currentCounters = settings?.counters && settings.counters.length ? settings.counters : ["Counter 1", "Counter 2"];
+    if (currentCounters.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      toast.warning(`Counter "${trimmed}" already exists.`);
+      return;
+    }
+    setSettings({
+      ...settings,
+      counters: [...currentCounters, trimmed],
+    });
+    setNewCounterInput("");
+    toast.info(`Added "${trimmed}". Click "Save Settings" to confirm.`);
+  };
 
   const loadSettings = async () => {
     setLoading(true);
@@ -178,6 +198,72 @@ export default function Settings() {
                     className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* 3. Counter Terminals Section (Dynamic Multi-Counter Configuration) */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Monitor className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Counter Terminals</h3>
+                    <p className="text-[10px] text-slate-500">Configure POS billing and Kitchen display counters (e.g. Counter 1, Counter 2, Counter 3)</p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                  {(settings.counters || []).length} Active
+                </span>
+              </div>
+
+              {/* Counters List */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(settings.counters && settings.counters.length ? settings.counters : ["Counter 1", "Counter 2"]).map((cName, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs group hover:border-slate-300 transition-all"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="font-bold text-xs text-slate-800">{cName}</span>
+                    <button
+                      type="button"
+                      disabled={(settings.counters || []).length <= 1}
+                      onClick={() => {
+                        const updated = (settings.counters || ["Counter 1"]).filter((_, i) => i !== idx);
+                        setSettings({ ...settings, counters: updated.length ? updated : ["Counter 1"] });
+                      }}
+                      className="text-slate-400 hover:text-red-500 p-0.5 rounded transition-colors disabled:opacity-20 cursor-pointer"
+                      title="Remove counter"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add New Counter Input Row */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  placeholder="New Counter Name (e.g. Counter 3, Juice Counter)"
+                  value={newCounterInput}
+                  onChange={(e) => setNewCounterInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCounter();
+                    }
+                  }}
+                  className="flex-1 bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCounter}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-sm"
+                >
+                  <Plus size={14} />
+                  <span>Add Counter</span>
+                </button>
               </div>
             </div>
 

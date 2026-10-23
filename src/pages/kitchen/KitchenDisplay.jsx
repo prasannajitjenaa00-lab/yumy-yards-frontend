@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { getKOTs, updateKOTStatus } from "../../services/orderService";
 import { getSocket } from "../../socket/socketClient";
+import api from "../../services/api";
 import {
   ChefHat,
   ClipboardList,
@@ -19,6 +21,8 @@ import {
   User,
   Sparkles,
   Layers,
+  Palette,
+  Plus,
 } from "lucide-react";
 
 const COLUMNS = [
@@ -113,6 +117,34 @@ function formatShortOrderNumber(orderNumber, fallback) {
   return `#${str}`;
 }
 
+export const ORDER_COLOR_PRESETS = [
+  { name: "Orange", hex: "#f97316" },
+  { name: "Emerald", hex: "#10b981" },
+  { name: "Cyan", hex: "#06b6d4" },
+  { name: "Purple", hex: "#a855f7" },
+  { name: "Amber", hex: "#f59e0b" },
+  { name: "Rose", hex: "#f43f5e" },
+  { name: "Red", hex: "#ef4444" },
+  { name: "Lime", hex: "#84cc16" },
+  { name: "Blue", hex: "#3b82f6" },
+  { name: "White", hex: "#f8fafc" },
+];
+
+export function hexToRgba(hex, alpha = 1) {
+  if (!hex || typeof hex !== "string") return `rgba(249, 115, 22, ${alpha})`;
+  let c = hex.replace("#", "").trim();
+  if (c.length === 3) {
+    c = c.split("").map((x) => x + x).join("");
+  }
+  if (c.length !== 6) return `rgba(249, 115, 22, ${alpha})`;
+  const num = parseInt(c, 16);
+  if (isNaN(num)) return `rgba(249, 115, 22, ${alpha})`;
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /* ========================================================================= */
 /* RECTANGLE VIEW SUB-COMPONENTS FOR READY SECTION (MAX 2 ON DISPLAY) */
 /* ========================================================================= */
@@ -120,11 +152,12 @@ function formatShortOrderNumber(orderNumber, fallback) {
 /**
  * Clean, modern Rectangle Card for an active Ready order.
  */
-function ReadyRectangleCard({ kot, slotNumber, advancingId, onServe }) {
+function ReadyRectangleCard({ kot, slotNumber, advancingId, onServe, orderIdColor }) {
   const kotNum = kot.kotNumber || `#${kot._id?.slice(-4)}`;
   const counterOrderId = kot.order?.orderNumber
     ? (kot.order.orderNumber.startsWith("#") ? kot.order.orderNumber : `#${kot.order.orderNumber}`)
     : kotNum;
+  const counterName = kot.counter || kot.order?.counter || "Counter 1";
   const orderTypeText =
     kot.orderType === "TAKEAWAY"
       ? "TAKEAWAY"
@@ -138,55 +171,74 @@ function ReadyRectangleCard({ kot, slotNumber, advancingId, onServe }) {
     : null;
 
   return (
-    <div className="relative bg-white border-2 border-emerald-500/90 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3 group">
-      {/* Top Slot Header Strip */}
-      <div className="flex items-center justify-between gap-2 border-b border-emerald-100 pb-2">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-            </span>
-            Ready Slot {slotNumber}
+    <div className="relative bg-white border-2 border-emerald-500/90 rounded-2xl p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-2.5 group">
+      {/* Top Slot & Counter Header Strip */}
+      <div className="flex items-center justify-between border-b border-emerald-100/90 pb-2">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs shrink-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
           </span>
-          <span
-            title="Order ID from Counter"
-            className="font-mono font-bold text-slate-900 text-xs sm:text-sm bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg shadow-2xs"
-          >
-            {counterOrderId}
-          </span>
-        </div>
+          Ready Slot {slotNumber}
+        </span>
 
-        <div className="flex items-center gap-1">
+        <span className={`px-2.5 py-1 rounded-lg font-black text-[10px] text-white shadow-2xs shrink-0 uppercase tracking-wide whitespace-nowrap ${
+          counterName === "Counter 2" ? "bg-purple-600 border border-purple-500" : "bg-sky-600 border border-sky-500"
+        }`}>
+          {counterName}
+        </span>
+      </div>
+
+      {/* Prominent Order Number Display Box (Dynamic ID Color + Clean Centered Status Badges) */}
+      <div
+        title="Exact Order Number from Counter"
+        style={{
+          borderColor: hexToRgba(orderIdColor || "#f97316", 0.45),
+          backgroundColor: hexToRgba(orderIdColor || "#f97316", 0.08),
+        }}
+        className="w-full py-2.5 px-3 rounded-xl border-2 flex flex-col items-center justify-center text-center gap-1.5 shadow-2xs"
+      >
+        <span
+          style={{ color: orderIdColor || "#f97316" }}
+          className="font-mono font-black text-2xl sm:text-3xl tracking-tight leading-none select-all"
+        >
+          {counterOrderId}
+        </span>
+
+        {/* Clean Badges for Payment & Dine-In / Takeaway (Centered, No Clipping) */}
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
           {kot.order?.paymentStatus === "PAID" && (
-            <span className="font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md text-[10px] tracking-wide">
+            <span className="font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded text-[10px] tracking-wide whitespace-nowrap">
               ✓ PAID
             </span>
           )}
-          <span className="font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
+          <span className="font-extrabold text-slate-700 bg-white/95 border border-slate-300 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider whitespace-nowrap shadow-2xs">
             {orderTypeText}
           </span>
         </div>
       </div>
 
-      {/* Cashier & Customer Info */}
+      {/* Cashier & Time Row */}
       <div className="flex items-center justify-between gap-1 text-[11px] bg-emerald-50/70 border border-emerald-100 rounded-xl px-2.5 py-1.5">
-        <span className="flex items-center gap-1 font-semibold text-slate-700 truncate" title={`Cashier: ${cashierName}`}>
+        <span className="flex items-center gap-1 font-semibold text-slate-700 min-w-0" title={`Cashier: ${cashierName}`}>
           <User size={12} className="text-emerald-600 shrink-0" />
-          <span className="text-[10px] uppercase font-bold text-slate-400">Cashier:</span>
+          <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Cashier:</span>
           <span className="text-slate-900 font-extrabold truncate">{cashierName}</span>
         </span>
-        {customerName ? (
-          <span className="text-[10px] text-slate-600 truncate max-w-[90px]" title={`Guest: ${customerName}`}>
-            👤 {customerName}
-          </span>
-        ) : formattedTime ? (
-          <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+        {formattedTime && (
+          <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1 shrink-0">
             <Clock size={11} className="text-slate-400" />
             {formattedTime}
           </span>
-        ) : null}
+        )}
       </div>
+
+      {/* Customer Name (if available) */}
+      {customerName && (
+        <div className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 truncate" title={`Guest: ${customerName}`}>
+          👤 <span className="font-bold text-slate-700">Guest:</span> {customerName}
+        </div>
+      )}
 
       {/* Order Notes (if any) */}
       {kot.order?.notes && (
@@ -316,12 +368,20 @@ function ReadyQueueStrip({ queuedKots, onServe, advancingId }) {
  * Fullscreen / Total Screen View for Ready Section
  * ONLY 2 orders shown 1 by 1 (up and down vertical stack), covering the entire screen, nothing else.
  */
-function ReadyFullscreenRowCard({ kot, slotNumber, advancingId, onServe }) {
+function ReadyFullscreenRowCard({
+  kot,
+  slotNumber,
+  advancingId,
+  onServe,
+  orderIdColor = "#f97316",
+  onSetOrderIdColor,
+}) {
   const kotNum = kot.kotNumber || `#${kot._id?.slice(-4)}`;
   // The exact order ID generated when customer placed order at counter
   const counterOrderId = kot.order?.orderNumber
     ? (kot.order.orderNumber.startsWith("#") ? kot.order.orderNumber : `#${kot.order.orderNumber}`)
     : kotNum;
+  const counterName = kot.counter || kot.order?.counter || "Counter 1";
   const orderTypeText =
     kot.orderType === "TAKEAWAY"
       ? "TAKEAWAY"
@@ -346,7 +406,12 @@ function ReadyFullscreenRowCard({ kot, slotNumber, advancingId, onServe }) {
             Ready Slot {slotNumber}
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`font-black px-2.5 py-1 rounded-xl text-xs sm:text-sm uppercase tracking-wide text-white shadow-2xs ${
+              counterName === "Counter 2" ? "bg-purple-600 border border-purple-400/30" : "bg-sky-600 border border-sky-400/30"
+            }`}>
+              {counterName}
+            </span>
             {isPaid && (
               <span className="font-black text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl text-xs sm:text-sm">
                 ✓ PAID
@@ -407,12 +472,23 @@ function ReadyFullscreenRowCard({ kot, slotNumber, advancingId, onServe }) {
           </div>
         </div>
 
-        {/* Right Side: WIDENED GIGANTIC ORDER ID (EXPANDED TO THE LEFT, SOLID GREEN DISPLAY) */}
+        {/* Right Side: WIDENED GIGANTIC ORDER ID (DYNAMIC USER-CONFIGURED COLOR) */}
         <div
           title="Exact Order Number from Counter"
-          className="flex-1 min-h-0 w-full h-full flex items-center justify-center text-center bg-gradient-to-br from-emerald-500/25 via-emerald-500/10 to-slate-900 border-2 sm:border-4 border-emerald-400 rounded-2xl sm:rounded-3xl p-1 sm:p-2 shadow-2xl shadow-emerald-500/35 overflow-hidden"
+          style={{
+            borderColor: orderIdColor,
+            background: `linear-gradient(135deg, ${hexToRgba(orderIdColor, 0.25)} 0%, ${hexToRgba(orderIdColor, 0.08)} 50%, #0f172a 100%)`,
+            boxShadow: `0 25px 50px -12px ${hexToRgba(orderIdColor, 0.35)}`,
+          }}
+          className="flex-1 min-h-0 w-full h-full flex items-center justify-center text-center border-2 sm:border-4 rounded-2xl sm:rounded-3xl p-1 sm:p-2 overflow-hidden"
         >
-          <span className="font-mono font-black text-[clamp(4rem,13vw,13rem)] text-emerald-400 tracking-tighter leading-none drop-shadow-[0_6px_40px_rgba(52,211,153,0.8)] select-none whitespace-nowrap w-full text-center">
+          <span
+            style={{
+              color: orderIdColor,
+              filter: `drop-shadow(0 6px 40px ${hexToRgba(orderIdColor, 0.85)})`,
+            }}
+            className="font-mono font-black text-[clamp(4rem,13vw,13rem)] tracking-tighter leading-none select-none whitespace-nowrap w-full text-center"
+          >
             {counterOrderId}
           </span>
         </div>
@@ -441,7 +517,15 @@ function ReadyFullscreenRowCard({ kot, slotNumber, advancingId, onServe }) {
   );
 }
 
-function FullscreenReadyView({ matchingKots, advancingId, onServe, onClose }) {
+function FullscreenReadyView({
+  matchingKots,
+  advancingId,
+  onServe,
+  onClose,
+  orderIdColor,
+  onSetOrderIdColor,
+  selectedCounterMode = "All",
+}) {
   const visibleReadyKots = matchingKots.slice(0, 2);
 
   if (!matchingKots.length) {
@@ -451,9 +535,13 @@ function FullscreenReadyView({ matchingKots, advancingId, onServe, onClose }) {
           <UtensilsCrossed size={36} />
         </div>
         <div>
-          <h2 className="text-xl font-black text-white">No orders ready</h2>
+          <h2 className="text-xl font-black text-white">
+            {selectedCounterMode !== "All" ? `No ${selectedCounterMode} orders ready` : "No orders ready"}
+          </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Orders marked ready from 'Preparing' will appear here.
+            {selectedCounterMode !== "All"
+              ? `Orders placed at ${selectedCounterMode} will appear here when ready.`
+              : "Orders marked ready from 'Preparing' will appear here."}
           </p>
         </div>
         <button
@@ -478,6 +566,8 @@ function FullscreenReadyView({ matchingKots, advancingId, onServe, onClose }) {
           slotNumber={1}
           advancingId={advancingId}
           onServe={onServe}
+          orderIdColor={orderIdColor}
+          onSetOrderIdColor={onSetOrderIdColor}
         />
       )}
 
@@ -488,6 +578,8 @@ function FullscreenReadyView({ matchingKots, advancingId, onServe, onClose }) {
           slotNumber={2}
           advancingId={advancingId}
           onServe={onServe}
+          orderIdColor={orderIdColor}
+          onSetOrderIdColor={onSetOrderIdColor}
         />
       ) : (
         <div className="flex-1 min-h-0 w-full border-2 border-dashed border-slate-700 bg-slate-900/40 rounded-2xl lg:rounded-3xl p-4 flex flex-col items-center justify-center text-center space-y-2">
@@ -495,9 +587,13 @@ function FullscreenReadyView({ matchingKots, advancingId, onServe, onClose }) {
             <UtensilsCrossed size={22} />
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-black text-slate-300">Ready Slot 2 Available</h3>
+            <h3 className="text-sm sm:text-base font-black text-slate-300">
+              {selectedCounterMode !== "All" ? `${selectedCounterMode} Slot 2 Available` : "Ready Slot 2 Available"}
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mt-0.5">
-              Next order marked ready from 'Preparing' will automatically display in this slot.
+              {selectedCounterMode !== "All"
+                ? `Next order marked ready from '${selectedCounterMode}' will automatically display here.`
+                : "Next order marked ready from 'Preparing' will automatically display in this slot."}
             </p>
           </div>
         </div>
@@ -517,6 +613,106 @@ export default function KitchenDisplay() {
   const [liveClock, setLiveClock] = useState("");
   const [isBrowserFs, setIsBrowserFs] = useState(false);
   const [advancingId, setAdvancingId] = useState(null);
+
+  const { user } = useSelector((s) => s.auth || {});
+  const isOwnerOrManager = user?.role === "OWNER" || user?.role === "MANAGER";
+
+  // Dynamic Counters from Settings
+  const [counters, setCounters] = useState(() => {
+    try {
+      const cached = localStorage.getItem("app_dynamic_counters");
+      return cached ? JSON.parse(cached) : ["Counter 1", "Counter 2"];
+    } catch {
+      return ["Counter 1", "Counter 2"];
+    }
+  });
+  const [showAddCounterModal, setShowAddCounterModal] = useState(false);
+  const [newCounterName, setNewCounterName] = useState("");
+
+  const loadCounters = async () => {
+    try {
+      const res = await api.get("/settings");
+      if (res.data?.data?.counters && res.data.data.counters.length) {
+        setCounters(res.data.data.counters);
+        localStorage.setItem("app_dynamic_counters", JSON.stringify(res.data.data.counters));
+      }
+    } catch (e) {
+      console.warn("Could not load counters in KDS:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadCounters();
+  }, []);
+
+  const handleAddNewCounter = async (e) => {
+    e?.preventDefault();
+    const trimmed = newCounterName.trim();
+    if (!trimmed) return;
+    if (counters.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      toast.warning(`Counter "${trimmed}" already exists.`);
+      return;
+    }
+    const updated = [...counters, trimmed];
+    setCounters(updated);
+    handleSelectCounterMode(trimmed);
+    setNewCounterName("");
+    setShowAddCounterModal(false);
+    try {
+      localStorage.setItem("app_dynamic_counters", JSON.stringify(updated));
+      const res = await api.get("/settings");
+      const currentSettings = res.data?.data || {};
+      await api.put("/settings", { ...currentSettings, counters: updated });
+      toast.success(`Counter "${trimmed}" created and selected!`);
+    } catch (err) {
+      toast.error("Failed to sync counter to server");
+    }
+  };
+
+  // Screen Counter Setting: "All" or any dynamic counter (saved per computer)
+  const [selectedCounterMode, setSelectedCounterMode] = useState(() => {
+    try {
+      return localStorage.getItem("kds_screen_counter") || "All";
+    } catch {
+      return "All";
+    }
+  });
+
+  const handleSelectCounterMode = (mode) => {
+    setSelectedCounterMode(mode);
+    try {
+      localStorage.setItem("kds_screen_counter", mode);
+    } catch (e) {
+      console.warn("Storage error:", e);
+    }
+    toast.info(`Screen display mode set to: ${mode === "All" ? "All Counters" : mode}`);
+  };
+
+  const [orderIdColor, setOrderIdColor] = useState(() => {
+    try {
+      return localStorage.getItem("kds_order_id_color") || "#f97316";
+    } catch {
+      return "#f97316";
+    }
+  });
+
+  const handleSetOrderIdColor = (color) => {
+    setOrderIdColor(color);
+    try {
+      localStorage.setItem("kds_order_id_color", color);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Filter KOTs for the current screen based on Counter 1 / Counter 2 / All
+  const filteredKots = useMemo(() => {
+    if (selectedCounterMode === "All") return kots;
+    return kots.filter((kot) => {
+      const counter = kot.counter || kot.order?.counter || "Counter 1";
+      return counter.toLowerCase() === selectedCounterMode.toLowerCase();
+    });
+  }, [kots, selectedCounterMode]);
 
   const load = () => {
     getKOTs()
@@ -634,9 +830,16 @@ export default function KitchenDisplay() {
                   </h1>
                   <span className="bg-orange-500 text-white font-extrabold text-xs px-2.5 py-0.5 rounded-full shadow-md shadow-orange-500/30">
                     {activeMaxColumn.status === "READY"
-                      ? `${Math.min(kots.filter((k) => activeMaxColumn.statusKeys.includes(k.status)).length, 2)} of ${kots.filter((k) => activeMaxColumn.statusKeys.includes(k.status)).length} Active`
-                      : `${kots.filter((k) => activeMaxColumn.statusKeys.includes(k.status)).length} KOTs`}
+                      ? `${Math.min(filteredKots.filter((k) => activeMaxColumn.statusKeys.includes(k.status)).length, 2)} of ${filteredKots.filter((k) => activeMaxColumn.statusKeys.includes(k.status)).length} Active`
+                      : `${filteredKots.filter((k) => activeMaxColumn.statusKeys.includes(k.status)).length} KOTs`}
                   </span>
+                  {selectedCounterMode !== "All" && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black text-white shadow-xs ${
+                      selectedCounterMode === "Counter 2" ? "bg-purple-600" : "bg-sky-600"
+                    }`}>
+                      {selectedCounterMode}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 font-medium">
                   <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
@@ -666,7 +869,7 @@ export default function KitchenDisplay() {
               {COLUMNS.map((col) => {
                 const Icon = col.icon;
                 const isSelected = maximizedColumn === col.status;
-                const count = kots.filter((k) => col.statusKeys.includes(k.status)).length;
+                const count = filteredKots.filter((k) => col.statusKeys.includes(k.status)).length;
                 return (
                   <button
                     key={col.status}
@@ -686,8 +889,32 @@ export default function KitchenDisplay() {
               })}
             </div>
 
-            {/* Right: Live Clock & Exit Controls */}
-            <div className="flex items-center gap-3 shrink-0">
+            {/* Right: Counter Screen Filter, Live Clock & Exit Controls */}
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 flex-wrap">
+              {/* Screen Counter Filter */}
+              <div className="flex items-center bg-slate-800/90 border border-slate-700/80 p-1 rounded-xl shadow-xs gap-1 flex-wrap">
+                {["All", ...counters].map((c, idx) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => handleSelectCounterMode(c)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                      selectedCounterMode === c
+                        ? c === "All"
+                          ? "bg-orange-500 text-white shadow-xs"
+                          : idx === 1
+                            ? "bg-sky-600 text-white shadow-xs"
+                            : idx === 2
+                              ? "bg-purple-600 text-white shadow-xs"
+                              : "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {c === "All" ? "All" : c}
+                  </button>
+                ))}
+              </div>
+
               {/* Live Kitchen Clock */}
               <div className="hidden sm:flex items-center gap-2 bg-slate-800/80 border border-slate-700 px-3.5 py-1.5 rounded-xl text-slate-200 font-mono font-bold text-xs shadow-inner">
                 <Clock size={15} className="text-orange-400" />
@@ -726,7 +953,7 @@ export default function KitchenDisplay() {
               } scrollbar-thin scrollbar-thumb-slate-700`}
           >
             {(() => {
-              const matchingKots = kots.filter((k) => activeMaxColumn.statusKeys.includes(k.status));
+              const matchingKots = filteredKots.filter((k) => activeMaxColumn.statusKeys.includes(k.status));
 
               // DEDICATED FULLSCREEN RECTANGLE VIEW FOR READY SECTION (MAX 2 ON DISPLAY)
               if (activeMaxColumn.status === "READY") {
@@ -736,6 +963,9 @@ export default function KitchenDisplay() {
                     advancingId={advancingId}
                     onServe={(kot) => advance(kot, "SERVED")}
                     onClose={() => setMaximizedColumn(null)}
+                    orderIdColor={orderIdColor}
+                    onSetOrderIdColor={handleSetOrderIdColor}
+                    selectedCounterMode={selectedCounterMode}
                   />
                 );
               }
@@ -767,6 +997,7 @@ export default function KitchenDisplay() {
                   {matchingKots.map((kot) => {
                     const kotNum = kot.kotNumber || `#${kot._id?.slice(-4)}`;
                     const orderNum = kot.order?.orderNumber ? `#${kot.order.orderNumber}` : kotNum;
+                    const counterName = kot.counter || kot.order?.counter || "Counter 1";
                     const orderTypeText =
                       kot.orderType === "TAKEAWAY"
                         ? "TAKEAWAY"
@@ -795,7 +1026,12 @@ export default function KitchenDisplay() {
                                 {kotNum}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`font-black text-xs px-2 py-0.5 rounded-lg text-white shadow-2xs ${
+                                counterName === "Counter 2" ? "bg-purple-600" : "bg-sky-600"
+                              }`}>
+                                {counterName}
+                              </span>
                               {kot.order?.paymentStatus === "PAID" && (
                                 <span className="font-black text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-lg text-xs tracking-wider">
                                   ✓ PAID
@@ -887,64 +1123,171 @@ export default function KitchenDisplay() {
       {/* ========================================================================= */}
       <div className="space-y-6 max-w-[1700px] mx-auto pb-10">
         {/* Header Banner */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
-          {/* Left Title */}
-          <div className="flex items-center gap-3.5 relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0 shadow-2xs">
-              <ChefHat size={26} />
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 shadow-sm space-y-4 relative overflow-hidden">
+          {/* Row 1: Title & Controls */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            {/* Left: Branding & Subtitle */}
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0 shadow-2xs">
+                <ChefHat size={26} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">Kitchen Display</h1>
+                  {selectedCounterMode !== "All" && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-black text-white shadow-2xs ${
+                      selectedCounterMode === "Counter 2" ? "bg-purple-600" : "bg-sky-600"
+                    }`}>
+                      {selectedCounterMode} Mode
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live kitchen orders • Ready orders shown in Rectangle View (max 2 at a time)
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Kitchen Display</h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Live kitchen orders • Ready orders shown in Rectangle View (max 2 at a time)
-              </p>
+
+            {/* Right: Screen Mode Selector, ID Color & Kitchen Online Badge on Far Right */}
+            <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap justify-end sm:ml-auto">
+              {/* Screen Counter Filter */}
+              <div className="bg-slate-100/90 border border-slate-200/90 rounded-2xl p-1.5 flex items-center shadow-2xs gap-1.5 flex-wrap">
+                <span className="text-[10px] font-extrabold text-slate-500 px-2 uppercase tracking-wider shrink-0">Screen:</span>
+                {["All", ...counters].map((c, idx) => {
+                  const isSelected = (selectedCounterMode || "").trim().toLowerCase() === (c || "").trim().toLowerCase();
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => handleSelectCounterMode(c)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border ${
+                        isSelected
+                          ? c === "All"
+                            ? "bg-slate-900 text-white shadow-xs border-slate-950"
+                            : idx === 1
+                              ? "bg-sky-600 text-white shadow-xs border-sky-700"
+                              : idx === 2
+                                ? "bg-purple-600 text-white shadow-xs border-purple-700"
+                                : "bg-emerald-600 text-white shadow-xs border-emerald-700"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                      <span>{c === "All" ? "All Counters" : c}</span>
+                    </button>
+                  );
+                })}
+
+                {/* Owner / Manager Quick + Add Counter Button */}
+                {isOwnerOrManager && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCounterModal(true)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-orange-600 bg-orange-50/70 hover:bg-orange-100 border border-dashed border-orange-300 flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                    title="Add New Counter Terminal (Owner & Manager only)"
+                  >
+                    <Plus size={13} />
+                    <span>Add</span>
+                  </button>
+                )}
+              </div>
+
+              {/* ID Color Theme Selector */}
+              <div className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-2xs">
+                <Palette size={14} className="text-orange-500 shrink-0" />
+                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">ID Color:</span>
+                <div className="flex items-center gap-1.5">
+                  {ORDER_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      title={preset.name}
+                      onClick={() => handleSetOrderIdColor(preset.hex)}
+                      className={`w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full transition-transform hover:scale-125 cursor-pointer ${
+                        orderIdColor?.toLowerCase() === preset.hex.toLowerCase()
+                          ? "ring-2 ring-slate-800 scale-110 shadow-xs"
+                          : "opacity-75 hover:opacity-100"
+                      }`}
+                      style={{ backgroundColor: preset.hex }}
+                    />
+                  ))}
+                  <label
+                    title="Pick Any Custom Color"
+                    className="relative flex items-center justify-center w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full cursor-pointer overflow-hidden border border-slate-300 hover:scale-110 transition-transform ml-0.5"
+                    style={{
+                      background: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
+                    }}
+                  >
+                    <input
+                      type="color"
+                      value={orderIdColor}
+                      onChange={(e) => handleSetOrderIdColor(e.target.value)}
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Kitchen Online Badge on Far Right */}
+              <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-2xs shrink-0">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <div>
+                  <div className="text-xs font-extrabold text-slate-800 whitespace-nowrap">Kitchen Online</div>
+                  <div className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Auto refresh enabled</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Section View Pills & Maximize Toggles */}
-          <div className="flex items-center gap-2 overflow-x-auto py-1 relative z-10">
+          {/* Row 2: Section View Tabs (Spacious, Beautiful & No Scrollbar) */}
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               onClick={() => setMaximizedColumn(null)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-orange-500 text-white shadow-sm cursor-pointer"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                maximizedColumn === null
+                  ? "bg-orange-500 text-white shadow-md shadow-orange-500/25"
+                  : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600"
+              }`}
             >
-              <LayoutGrid size={14} />
-              <span>All Sections (4 Col)</span>
+              <LayoutGrid size={15} />
+              <span>All Sections (4 Columns)</span>
             </button>
 
             {COLUMNS.map((col) => {
               const Icon = col.icon;
-              const count = kots.filter((k) => col.statusKeys.includes(k.status)).length;
+              const count = filteredKots.filter((k) => col.statusKeys.includes(k.status)).length;
+              const isSelected = maximizedColumn === col.status;
               return (
                 <button
                   key={col.status}
                   type="button"
                   onClick={() => setMaximizedColumn(col.status)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-white border border-slate-200 text-slate-700 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 cursor-pointer shadow-2xs"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    isSelected
+                      ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/20"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                  }`}
                   title={`Open ${col.label} in Total Screen`}
                 >
-                  <Icon size={14} />
-                  <span>
-                    {col.label} ({count})
+                  <Icon size={15} className={isSelected ? "text-orange-400" : "text-slate-400"} />
+                  <span>{col.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+                    isSelected
+                      ? "bg-orange-500 text-white"
+                      : count > 0
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-slate-100 text-slate-500"
+                  }`}>
+                    {count}
                   </span>
-                  <Maximize2 size={12} className="opacity-70 ml-0.5" />
+                  <Maximize2 size={12} className="opacity-50 ml-0.5" />
                 </button>
               );
             })}
-          </div>
-
-          {/* Right Status Indicator Badge */}
-          <div className="relative z-10 self-start md:self-auto shrink-0">
-            <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-2xs">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-              </span>
-              <div>
-                <div className="text-xs font-extrabold text-slate-800">Kitchen Online</div>
-                <div className="text-[10px] text-slate-400 font-medium">Auto refresh enabled</div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -952,7 +1295,7 @@ export default function KitchenDisplay() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {COLUMNS.map((col) => {
             const ColumnIcon = col.icon;
-            const matchingKots = kots.filter((k) => col.statusKeys.includes(k.status));
+            const matchingKots = filteredKots.filter((k) => col.statusKeys.includes(k.status));
             const count = matchingKots.length;
 
             return (
@@ -1014,6 +1357,7 @@ export default function KitchenDisplay() {
                             slotNumber={1}
                             advancingId={advancingId}
                             onServe={(kot) => advance(kot, "SERVED")}
+                            orderIdColor={orderIdColor}
                           />
                         )}
 
@@ -1024,6 +1368,7 @@ export default function KitchenDisplay() {
                             slotNumber={2}
                             advancingId={advancingId}
                             onServe={(kot) => advance(kot, "SERVED")}
+                            orderIdColor={orderIdColor}
                           />
                         ) : (
                           <EmptyReadySlot slotNumber={2} />
@@ -1067,6 +1412,7 @@ export default function KitchenDisplay() {
                               : kot.orderType === "DELIVERY"
                                 ? "DELIVERY"
                                 : "COUNTER / DINE-IN";
+                          const counterName = kot.counter || kot.order?.counter || "Counter 1";
                           const cashierName = kot.createdBy?.name || kot.order?.createdBy?.name || "Cashier Counter";
                           const customerName = kot.order?.customer?.name;
                           const formattedTime = kot.createdAt
@@ -1080,21 +1426,23 @@ export default function KitchenDisplay() {
                             >
                               {/* Card Top Row */}
                               <div className="flex items-center justify-between text-xs gap-1.5 flex-wrap">
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1.5 min-w-0">
                                   <span className="font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md border border-orange-200 shadow-2xs">
                                     {orderNum}
                                   </span>
-                                  <span className="font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200 text-[10px]">
-                                    {kotNum}
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-black text-white uppercase whitespace-nowrap shadow-2xs ${
+                                    counterName === "Counter 2" ? "bg-purple-600" : "bg-sky-600"
+                                  }`}>
+                                    {counterName}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 shrink-0">
                                   {kot.order?.paymentStatus === "PAID" && (
-                                    <span className="font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-md text-[10px] tracking-wide">
+                                    <span className="font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-md text-[10px] tracking-wide whitespace-nowrap">
                                       ✓ PAID
                                     </span>
                                   )}
-                                  <span className="font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
+                                  <span className="font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[10px] whitespace-nowrap">
                                     {orderTypeText}
                                   </span>
                                 </div>
@@ -1198,6 +1546,56 @@ export default function KitchenDisplay() {
           })}
         </div>
       </div>
+
+      {/* Quick Add Counter Modal (Owner & Manager only) */}
+      {showAddCounterModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <h3 className="font-bold text-sm text-slate-900">Add Counter Terminal</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCounterModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Enter counter name (e.g. <b>Counter 3</b>, <b>Juice Bar</b>, <b>Takeaway Desk</b>). It will be available for POS billing and Kitchen Display.
+            </p>
+            <form onSubmit={handleAddNewCounter} className="space-y-3">
+              <input
+                type="text"
+                placeholder="e.g. Counter 3"
+                value={newCounterName}
+                onChange={(e) => setNewCounterName(e.target.value)}
+                autoFocus
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3.5 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                required
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCounterModal(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+                >
+                  Create Counter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

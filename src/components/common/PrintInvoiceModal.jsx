@@ -485,6 +485,10 @@ export default function PrintInvoiceModal({ isOpen, onClose, order, invoice, res
             size: ${printFormat === "THERMAL" ? "80mm auto" : "A4 portrait"};
             margin: ${printFormat === "THERMAL" ? "0mm" : "10mm"};
           }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
@@ -492,15 +496,17 @@ export default function PrintInvoiceModal({ isOpen, onClose, order, invoice, res
             color: #000000 !important;
           }
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
           #printable-receipt, #printable-receipt * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #printable-receipt {
-            position: absolute;
-            left: 0;
-            top: 0;
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            right: 0 !important;
+            top: 0 !important;
             width: ${printFormat === "THERMAL" ? "78mm !important" : "100% !important"};
             max-width: ${printFormat === "THERMAL" ? "80mm !important" : "750px !important"};
             margin: 0 auto !important;
