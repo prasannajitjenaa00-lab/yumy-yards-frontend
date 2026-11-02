@@ -35,12 +35,14 @@ import {
   QrCode,
   CreditCard,
   Monitor,
+  Wallet,
 } from "lucide-react";
 import { getMenu, getCategories } from "../../services/menuService";
 import { createOrder, sendKOT } from "../../services/orderService";
 import { recordPayment } from "../../services/paymentService";
 import api from "../../services/api";
 import PrintInvoiceModal from "../../components/common/PrintInvoiceModal";
+import PettyCashModal from "../../components/common/PettyCashModal";
 import {
   setOrderType,
   addItem,
@@ -103,6 +105,7 @@ export default function POS() {
   const [completedOrder, setCompletedOrder] = useState(null);
   const [paying, setPaying] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
+  const [showPettyCashModal, setShowPettyCashModal] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -378,6 +381,15 @@ export default function POS() {
                 </button>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPettyCashModal(true)}
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-sm hover:shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+            >
+              <Wallet size={15} className="shrink-0" />
+              <span>Petty Cash</span>
+            </button>
 
             <button
               type="button"
@@ -1256,6 +1268,13 @@ export default function POS() {
           </div>
         </div>
       )}
+
+      {/* Petty Cash Modal */}
+      <PettyCashModal
+        isOpen={showPettyCashModal}
+        onClose={() => setShowPettyCashModal(false)}
+        activeCounter={activeCounter}
+      />
     </div>
   );
 }
