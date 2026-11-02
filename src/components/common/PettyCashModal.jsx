@@ -53,8 +53,13 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
   useEffect(() => {
     if (isOpen) {
       loadData();
+      const handleKeyDown = (e) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
     }
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   const loadData = async () => {
     try {
@@ -118,28 +123,36 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="px-5 py-4 bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between shrink-0">
+        {/* Header with High-Contrast Exit Button */}
+        <div className="px-5 py-3.5 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shadow-xs">
               <Wallet size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight">Petty Cash & Cash Drawer</h2>
-              <p className="text-[11px] text-slate-300 flex items-center gap-1.5 font-medium">
-                <Building size={11} className="text-amber-400" />
-                <span>{activeCounter}</span>
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Petty Cash & Cash Drawer</h2>
+              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
+                <Building size={11} className="text-amber-500" />
+                <span className="font-semibold text-slate-700">{activeCounter}</span>
                 <span>•</span>
-                <span>Drawer Balance: ₹{summary?.currentBalance ?? "0.00"}</span>
+                <span>Drawer Balance: <b className="text-slate-900">₹{summary?.currentBalance ?? "0.00"}</b></span>
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-slate-200"
+            title="Exit / Close (Esc)"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
@@ -356,12 +369,19 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-2">
+              {/* Action Buttons (Cancel / Submit) */}
+              <div className="pt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-1/3 py-3 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs transition-colors cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`w-2/3 py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     type === "CASH_OUT"
                       ? "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
                       : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20"
