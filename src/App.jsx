@@ -16,6 +16,7 @@ import POS from "./pages/pos/POS";
 import Orders from "./pages/orders/Orders";
 import OrderDetails from "./pages/orders/OrderDetails";
 import KitchenDisplay from "./pages/kitchen/KitchenDisplay";
+import WhatsAppNotifications from "./pages/orders/WhatsAppNotifications";
 import Menu from "./pages/menu/Menu";
 import Inventory from "./pages/inventory/Inventory";
 import Purchases from "./pages/purchases/Purchases";
@@ -101,6 +102,7 @@ export default function App() {
             <Route path="/customers" element={<Customers />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/payments" element={<Payments />} />
+            <Route path="/notifications/whatsapp" element={<WhatsAppNotifications />} />
           </Route>
         </Route>
       </Route>

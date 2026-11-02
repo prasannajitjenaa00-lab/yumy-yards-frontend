@@ -31,6 +31,7 @@
     CalendarDays,
     CalendarOff,
     Coffee,
+    MessageCircle,
   } from "lucide-react";
   import { clearCredentials } from "../store/slices/authSlice";
   import { logout as logoutApi } from "../services/authService";
@@ -55,6 +56,7 @@
       { to: "/inventory", label: "Inventory", icon: Package },
       { to: "/purchases", label: "Purchases", icon: Truck },
       { to: "/customers", label: "Customers", icon: Users },
+      { to: "/notifications/whatsapp", label: "WhatsApp Log", icon: MessageCircle },
       { to: "/staff", label: "Staff", icon: UserCheck },
       { to: "/staff/attendance", label: "Attendance", icon: Clock },
       { to: "/staff/leave-management", label: "Leave Management", icon: CalendarOff },
@@ -74,6 +76,7 @@
       { to: "/inventory", label: "Inventory", icon: Package },
       { to: "/purchases", label: "Purchases", icon: Truck },
       { to: "/customers", label: "Customers", icon: Users },
+      { to: "/notifications/whatsapp", label: "WhatsApp Log", icon: MessageCircle },
       { to: "/staff", label: "Staff", icon: UserCheck },
       { to: "/staff/attendance", label: "Attendance", icon: Clock },
       { to: "/staff/leave-management", label: "Leave Management", icon: CalendarOff },
@@ -87,6 +90,7 @@
       { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
       { to: "/orders", label: "Orders", icon: ClipboardList },
       { to: "/customers", label: "Customers", icon: Users },
+      { to: "/notifications/whatsapp", label: "WhatsApp Log", icon: MessageCircle },
       { to: "/payments", label: "Payments", icon: Wallet },
       { to: "/staff/attendance", label: "Attendance", icon: Clock },
       { to: "/staff/leave", label: "My Leave", icon: Coffee },

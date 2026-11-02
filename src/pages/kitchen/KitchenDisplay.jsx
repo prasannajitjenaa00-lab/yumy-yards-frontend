@@ -146,6 +146,36 @@ export function hexToRgba(hex, alpha = 1) {
 }
 
 /* ========================================================================= */
+/* WHATSAPP "FOOD READY" NOTIFICATION INDICATOR */
+/* ========================================================================= */
+
+const WHATSAPP_BADGE_CONFIG = {
+  sent: { label: "WhatsApp Sent", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+  delivered: { label: "WhatsApp Delivered", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+  read: { label: "WhatsApp Read", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+  sending: { label: "WhatsApp Pending", className: "bg-amber-100 text-amber-800 border-amber-300" },
+  pending: { label: "WhatsApp Pending", className: "bg-amber-100 text-amber-800 border-amber-300" },
+  failed: { label: "WhatsApp Failed", className: "bg-rose-100 text-rose-800 border-rose-300" },
+  skipped: { label: "Notification Skipped", className: "bg-slate-100 text-slate-600 border-slate-300" },
+};
+
+function WhatsAppStatusBadge({ order }) {
+  const status = order?.whatsappNotification?.foodReady?.status;
+  if (!status) return null;
+  const config = WHATSAPP_BADGE_CONFIG[status];
+  if (!config) return null;
+  const errorDetail = order?.whatsappNotification?.foodReady?.error;
+  return (
+    <span
+      title={errorDetail || config.label}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wide border whitespace-nowrap ${config.className}`}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+/* ========================================================================= */
 /* RECTANGLE VIEW SUB-COMPONENTS FOR READY SECTION (MAX 2 ON DISPLAY) */
 /* ========================================================================= */
 
@@ -235,8 +265,9 @@ function ReadyRectangleCard({ kot, slotNumber, advancingId, onServe, orderIdColo
 
       {/* Customer Name (if available) */}
       {customerName && (
-        <div className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 truncate" title={`Guest: ${customerName}`}>
-          👤 <span className="font-bold text-slate-700">Guest:</span> {customerName}
+        <div className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 truncate flex items-center justify-between gap-1.5" title={`Guest: ${customerName}`}>
+          <span>👤 <span className="font-bold text-slate-700">Guest:</span> {customerName}</span>
+          <WhatsAppStatusBadge order={kot.order} />
         </div>
       )}
 
@@ -435,6 +466,7 @@ function ReadyFullscreenRowCard({
               👤 {customerName}
             </span>
           )}
+          <WhatsAppStatusBadge order={kot.order} />
         </div>
       </div>
 
@@ -730,6 +762,7 @@ export default function KitchenDisplay() {
         load();
       });
       socket.on("kot:status", load);
+      socket.on("order:whatsapp", load);
     }
     const interval = setInterval(load, 8000);
     return () => {
@@ -737,6 +770,7 @@ export default function KitchenDisplay() {
       if (socket) {
         socket.off("kot:new");
         socket.off("kot:status");
+        socket.off("order:whatsapp");
       }
     };
   }, []);

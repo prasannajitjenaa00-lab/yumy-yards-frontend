@@ -121,6 +121,7 @@ export default function OrderDetails() {
       socket.on("kot:status", loadData);
       socket.on("kot:new", loadData);
       socket.on("order:status", loadData);
+      socket.on("order:whatsapp", loadData);
       socket.on("payment:new", loadData);
       socket.on("bill:request", loadData);
       socket.on("table:update", loadData);
@@ -130,6 +131,7 @@ export default function OrderDetails() {
         socket.off("kot:status", loadData);
         socket.off("kot:new", loadData);
         socket.off("order:status", loadData);
+        socket.off("order:whatsapp", loadData);
         socket.off("payment:new", loadData);
         socket.off("bill:request", loadData);
         socket.off("table:update", loadData);
@@ -793,6 +795,30 @@ export default function OrderDetails() {
                       <span>🟢 Food is Ready! Serve to customer.</span>
                     </p>
                     <p className="text-[11px] text-emerald-700">All items prepared by kitchen. Order is ready to serve.</p>
+                    {(() => {
+                      const foodReady = order.whatsappNotification?.foodReady;
+                      if (!foodReady?.status) return null;
+                      const WA_CONFIG = {
+                        sent: { label: "WhatsApp notification sent", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+                        delivered: { label: "WhatsApp notification delivered", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+                        read: { label: "WhatsApp notification read", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+                        sending: { label: "WhatsApp notification pending...", className: "bg-amber-100 text-amber-800 border-amber-300" },
+                        pending: { label: "WhatsApp notification pending...", className: "bg-amber-100 text-amber-800 border-amber-300" },
+                        failed: { label: "WhatsApp notification failed", className: "bg-rose-100 text-rose-800 border-rose-300" },
+                        skipped: { label: "WhatsApp notification skipped", className: "bg-slate-100 text-slate-700 border-slate-300" },
+                      };
+                      const cfg = WA_CONFIG[foodReady.status];
+                      if (!cfg) return null;
+                      return (
+                        <p
+                          className={`inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${cfg.className}`}
+                          title={foodReady.error || ""}
+                        >
+                          {cfg.label}
+                          {foodReady.error ? `: ${foodReady.error}` : ""}
+                        </p>
+                      );
+                    })()}
                   </div>
                 )}
 

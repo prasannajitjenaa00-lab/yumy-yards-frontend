@@ -11,5 +11,6 @@ export const updateKOTStatus = (id, status) => api.patch(`/kots/${id}/status`, {
 export const requestBill = (id) => api.post(`/orders/${id}/request-bill`).then((r) => r.data);
 export const processBill = (id) => api.post(`/orders/${id}/process-bill`).then((r) => r.data);
 export const getBillRequests = () => api.get("/orders/bill-requests/list").then((r) => r.data);
+export const getWhatsAppNotifications = (params) => api.get("/orders/whatsapp/notifications", { params }).then((r) => r.data);
 export const clearTable = (id) => api.post(`/orders/${id}/clear-table`).then((r) => r.data);
 
