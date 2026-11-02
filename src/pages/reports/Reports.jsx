@@ -361,11 +361,24 @@ export default function Reports() {
                       outerRadius={70}
                       paddingAngle={3}
                       dataKey="value"
+                      isAnimationActive={true}
+                      animationBegin={100}
+                      animationDuration={1300}
+                      animationEasing="ease-out"
                     >
                       {orderTypeData.map((entry, idx) => (
-                        <Cell key={`cell-${idx}`} fill={entry.color} />
+                        <Cell key={`cell-${idx}`} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
                       ))}
                     </Pie>
+                    <Tooltip
+                      formatter={(v) => [`${v} Orders`, "Volume"]}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        fontSize: "11px",
+                        border: "none",
+                        boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -807,11 +820,24 @@ export default function Reports() {
                             outerRadius={70}
                             paddingAngle={4}
                             dataKey="value"
+                            isAnimationActive={true}
+                            animationBegin={100}
+                            animationDuration={1300}
+                            animationEasing="ease-out"
                           >
                             {paymentChartData.map((entry, idx) => (
-                              <Cell key={`cell-${idx}`} fill={entry.color} />
+                              <Cell key={`cell-${idx}`} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
                             ))}
                           </Pie>
+                          <Tooltip
+                            formatter={(v, name) => [`₹${v}`, name]}
+                            contentStyle={{
+                              borderRadius: "12px",
+                              fontSize: "11px",
+                              border: "none",
+                              boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                            }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -1055,12 +1081,14 @@ export default function Reports() {
             </button>
           </div>
 
-          {/* KPI Cards */}
+          {/* KPI Cards with Day-to-Day Carry Forward */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Drawer Net Balance</span>
-              <p className="text-2xl font-bold text-slate-900 pt-1">₹{pettyCash?.netBalance ?? 0}</p>
-              <p className="text-[11px] text-slate-500 font-medium">Available petty cash on hand</p>
+            <div className="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs space-y-1 bg-linear-to-b from-white to-amber-50/20">
+              <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+                Opening (Yesterday Close)
+              </span>
+              <p className="text-2xl font-bold text-amber-900 pt-1">₹{pettyCash?.openingBalance ?? 0}</p>
+              <p className="text-[11px] text-amber-700 font-medium">Carried forward automatically</p>
             </div>
 
             <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs space-y-1 bg-linear-to-b from-white to-emerald-50/20">
@@ -1069,7 +1097,7 @@ export default function Reports() {
                 <span>Total Cash In</span>
               </span>
               <p className="text-2xl font-bold text-emerald-700 pt-1">+₹{pettyCash?.totalCashIn ?? 0}</p>
-              <p className="text-[11px] text-emerald-600 font-medium">Float deposits & reimbursements</p>
+              <p className="text-[11px] text-emerald-600 font-medium">Float top-ups & deposits</p>
             </div>
 
             <div className="bg-white rounded-2xl p-4 border border-rose-100 shadow-xs space-y-1 bg-linear-to-b from-white to-rose-50/20">
@@ -1078,15 +1106,226 @@ export default function Reports() {
                 <span>Total Cash Out</span>
               </span>
               <p className="text-2xl font-bold text-rose-700 pt-1">-₹{pettyCash?.totalCashOut ?? 0}</p>
-              <p className="text-[11px] text-rose-600 font-medium">Emergency items & petty expenses</p>
+              <p className="text-[11px] text-rose-600 font-medium">Emergency grocery & supplies</p>
             </div>
 
             <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Vouchers</span>
-              <p className="text-2xl font-bold text-slate-900 pt-1">{pettyCash?.totalTransactions ?? 0}</p>
-              <p className="text-[11px] text-slate-500 font-medium">Signed receipts logged</p>
+              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                Closing Net Balance
+              </span>
+              <p className="text-2xl font-bold text-slate-900 pt-1">₹{pettyCash?.netBalance ?? 0}</p>
+              <p className="text-[11px] text-slate-500 font-medium">Tomorrow's opening balance</p>
             </div>
           </div>
+
+          {/* Middle Row: Animated Expense Pie Chart & Daily Carry-Forward Ledger */}
+          {(() => {
+            const CATEGORY_COLORS = {
+              RAW_MATERIALS: "#f97316",
+              SUPPLIES: "#3b82f6",
+              TRANSPORT: "#06b6d4",
+              MAINTENANCE: "#eab308",
+              STAFF_TEA_SNACKS: "#10b981",
+              UTILITIES: "#a855f7",
+              FLOAT_TOPUP: "#14b8a6",
+              OTHER: "#64748b",
+            };
+
+            const CATEGORY_LABELS = {
+              RAW_MATERIALS: "Groceries / Milk / Ice",
+              SUPPLIES: "Packaging & Disposables",
+              TRANSPORT: "Auto / Errand / Fuel",
+              MAINTENANCE: "Minor Repairs & Hardware",
+              STAFF_TEA_SNACKS: "Staff Tea & Snacks",
+              UTILITIES: "Gas & Utilities",
+              FLOAT_TOPUP: "Float Top-up",
+              OTHER: "Other Petty Expenses",
+            };
+
+            const pettyCategoryData = Object.entries(pettyCash?.byCategory || {})
+              .map(([k, v]) => ({
+                name: CATEGORY_LABELS[k] || k,
+                value: v,
+                color: CATEGORY_COLORS[k] || "#f97316",
+              }))
+              .filter((d) => d.value > 0);
+
+            const totalExpense = pettyCategoryData.reduce((s, i) => s + i.value, 0);
+
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* 1. Animated Category Pie Chart */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <ShoppingBag className="w-4 h-4 text-orange-500" />
+                      <span>Expenses by Category</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Animated
+                    </span>
+                  </div>
+
+                  {pettyCategoryData.length > 0 ? (
+                    <>
+                      <div className="relative h-44 flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pettyCategoryData}
+                              innerRadius={48}
+                              outerRadius={70}
+                              paddingAngle={4}
+                              dataKey="value"
+                              isAnimationActive={true}
+                              animationBegin={150}
+                              animationDuration={1400}
+                              animationEasing="ease-out"
+                            >
+                              {pettyCategoryData.map((entry, idx) => (
+                                <Cell
+                                  key={`cell-${idx}`}
+                                  fill={entry.color}
+                                  stroke="#ffffff"
+                                  strokeWidth={2}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(v, name) => [`₹${v}`, name]}
+                              contentStyle={{
+                                borderRadius: "12px",
+                                fontSize: "11px",
+                                border: "none",
+                                boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-base font-bold text-slate-900">₹{totalExpense}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Spent</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 border-t border-slate-100 pt-3 text-xs max-h-40 overflow-y-auto pr-1">
+                        {pettyCategoryData.map((item, idx) => {
+                          const pct = totalExpense > 0 ? Math.round((item.value / totalExpense) * 100) : 0;
+                          return (
+                            <div key={idx} className="space-y-0.5">
+                              <div className="flex justify-between text-[11px] font-medium text-slate-700">
+                                <span className="flex items-center gap-1.5 truncate pr-2">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: item.color }}
+                                  />
+                                  <span className="truncate">{item.name}</span>
+                                </span>
+                                <span className="font-bold text-slate-900 shrink-0">
+                                  ₹{item.value} ({pct}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                                <div
+                                  className="h-1 rounded-full transition-all duration-1000"
+                                  style={{ width: `${pct}%`, backgroundColor: item.color }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-12 text-center text-slate-400">
+                      <ShoppingBag size={32} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-xs font-semibold">No category expenses recorded yet</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Daily Carry-Forward Balance Ledger */}
+                <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-100 shadow-xs space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                          <ArrowRight className="w-4 h-4 text-emerald-500" />
+                          <span>Daily Carry-Forward Balance Ledger</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Today's Opening Balance = Yesterday's Closing Balance automatically rolled forward.
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        Continuous Rollover
+                      </span>
+                    </div>
+
+                    <div className="pt-2 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase tracking-wider font-bold border-b border-slate-100">
+                          <tr>
+                            <th className="py-2 px-3">Date</th>
+                            <th className="py-2 px-3">Opening (Yesterday Close)</th>
+                            <th className="py-2 px-3">Cash In (+)</th>
+                            <th className="py-2 px-3">Cash Out (-)</th>
+                            <th className="py-2 px-3">Closing Balance (Carried ➔)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {(pettyCash?.dailyLedger && pettyCash.dailyLedger.length > 0) ? (
+                            pettyCash.dailyLedger.map((row, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                                <td className="py-2.5 px-3 font-semibold text-slate-800">
+                                  {new Date(row.date).toLocaleDateString([], {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </td>
+                                <td className="py-2.5 px-3 font-bold text-amber-900">
+                                  ₹{row.openingBalance}
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-emerald-600">
+                                  {row.cashIn > 0 ? `+₹${row.cashIn}` : "—"}
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-rose-600">
+                                  {row.cashOut > 0 ? `-₹${row.cashOut}` : "—"}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span className="inline-flex items-center gap-1 font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200/60">
+                                    <span>₹{row.closingBalance}</span>
+                                    <ArrowRight size={11} className="text-emerald-500" />
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="py-6 text-center text-slate-400 text-xs">
+                                No daily ledger history available yet.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs text-slate-600">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <CheckCircle2 size={13} className="text-emerald-500" />
+                      <span>Carry-Forward Formula: <b>Closing = Opening + Cash In - Cash Out</b></span>
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-900">
+                      Tomorrow's Open: ₹{pettyCash?.netBalance ?? 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Vouchers Table */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">

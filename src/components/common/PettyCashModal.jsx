@@ -145,19 +145,23 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
           </button>
         </div>
 
-        {/* Top Summary Banner */}
-        <div className="grid grid-cols-3 gap-2 px-5 py-3 bg-slate-50 border-b border-slate-100 shrink-0 text-center">
-          <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-            <span className="text-[10px] text-slate-400 font-semibold uppercase">Current Float</span>
-            <p className="text-sm font-bold text-slate-900 mt-0.5">₹{summary?.currentBalance ?? 0}</p>
+        {/* Top Summary Banner with Day-to-Day Carry Forward */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 py-3 bg-slate-50 border-b border-slate-100 shrink-0 text-center">
+          <div className="p-2 rounded-xl bg-amber-50/60 border border-amber-200/60 shadow-2xs">
+            <span className="text-[10px] text-amber-700 font-bold uppercase block truncate">Opening (Yesterday Close)</span>
+            <p className="text-sm font-bold text-amber-900 mt-0.5">₹{summary?.openingBalance ?? 0}</p>
           </div>
           <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-            <span className="text-[10px] text-emerald-600 font-semibold uppercase">Today In</span>
+            <span className="text-[10px] text-emerald-600 font-semibold uppercase block truncate">Today In</span>
             <p className="text-sm font-bold text-emerald-600 mt-0.5">+₹{summary?.todayIn ?? 0}</p>
           </div>
           <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-            <span className="text-[10px] text-rose-600 font-semibold uppercase">Today Out</span>
+            <span className="text-[10px] text-rose-600 font-semibold uppercase block truncate">Today Out</span>
             <p className="text-sm font-bold text-rose-600 mt-0.5">-₹{summary?.todayOut ?? 0}</p>
+          </div>
+          <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
+            <span className="text-[10px] text-slate-500 font-bold uppercase block truncate">Current Balance</span>
+            <p className="text-sm font-bold text-slate-900 mt-0.5">₹{summary?.currentBalance ?? 0}</p>
           </div>
         </div>
 

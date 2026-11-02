@@ -43,6 +43,7 @@ import { recordPayment } from "../../services/paymentService";
 import api from "../../services/api";
 import PrintInvoiceModal from "../../components/common/PrintInvoiceModal";
 import PettyCashModal from "../../components/common/PettyCashModal";
+import { getPettyCashSummary } from "../../services/pettyCashService";
 import {
   setOrderType,
   addItem,
@@ -106,6 +107,7 @@ export default function POS() {
   const [paying, setPaying] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
   const [showPettyCashModal, setShowPettyCashModal] = useState(false);
+  const [pettyCashSummary, setPettyCashSummary] = useState(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -187,8 +189,17 @@ export default function POS() {
     }
   };
 
+  const loadPettySummary = () => {
+    getPettyCashSummary()
+      .then((res) => {
+        if (res?.data) setPettyCashSummary(res.data);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     loadCounters();
+    loadPettySummary();
     getCategories().then((r) => setCategories(r.data || []));
     getMenu({ limit: 200 }).then((r) => setMenu(r.data || []));
   }, []);
@@ -385,10 +396,23 @@ export default function POS() {
             <button
               type="button"
               onClick={() => setShowPettyCashModal(true)}
-              className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-sm hover:shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-1.5 rounded-2xl shadow-sm hover:shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95 shrink-0"
+              title="Today's Opening carried forward from yesterday's closing"
             >
-              <Wallet size={15} className="shrink-0" />
-              <span>Petty Cash</span>
+              <div className="w-7 h-7 rounded-xl bg-amber-600/40 flex items-center justify-center shrink-0">
+                <Wallet size={15} className="text-amber-100" />
+              </div>
+              <div className="text-left leading-tight">
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <span>Petty Cash</span>
+                  <span className="bg-amber-700/60 text-amber-100 px-1.5 py-0.2 rounded text-[10px]">
+                    ₹{pettyCashSummary?.currentBalance ?? 0}
+                  </span>
+                </div>
+                <div className="text-[10px] text-amber-100/90 font-medium flex items-center gap-1">
+                  <span>Open: ₹{pettyCashSummary?.openingBalance ?? 0}</span>
+                </div>
+              </div>
             </button>
 
             <button
@@ -1272,7 +1296,10 @@ export default function POS() {
       {/* Petty Cash Modal */}
       <PettyCashModal
         isOpen={showPettyCashModal}
-        onClose={() => setShowPettyCashModal(false)}
+        onClose={() => {
+          setShowPettyCashModal(false);
+          loadPettySummary();
+        }}
         activeCounter={activeCounter}
       />
     </div>
