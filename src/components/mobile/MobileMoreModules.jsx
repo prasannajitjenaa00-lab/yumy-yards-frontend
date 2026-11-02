@@ -226,7 +226,7 @@ const ALL_MODULE_GROUPS = [
         label: "Payments",
         to: "/payments",
         icon: Wallet,
-        roles: ["OWNER", "MANAGER", "CASHIER"],
+        roles: ["OWNER", "MANAGER"],
         color: "bg-emerald-500 text-white",
         bgLight: "bg-emerald-50 text-emerald-600 border-emerald-100",
         description: "Payment logs & methods",

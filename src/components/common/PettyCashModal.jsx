@@ -158,23 +158,25 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
           </button>
         </div>
 
-        {/* Top Summary Banner with Day-to-Day Carry Forward */}
+        {/* Top Summary Banner with Day-to-Day Carry Forward and POS Cash Sales */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 py-3 bg-slate-50 border-b border-slate-100 shrink-0 text-center">
           <div className="p-2 rounded-xl bg-amber-50/60 border border-amber-200/60 shadow-2xs">
             <span className="text-[10px] text-amber-700 font-bold uppercase block truncate">Opening (Yesterday Close)</span>
             <p className="text-sm font-bold text-amber-900 mt-0.5">₹{summary?.openingBalance ?? 0}</p>
           </div>
-          <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-            <span className="text-[10px] text-emerald-600 font-semibold uppercase block truncate">Today In</span>
-            <p className="text-sm font-bold text-emerald-600 mt-0.5">+₹{summary?.todayIn ?? 0}</p>
+          <div className="p-2 rounded-xl bg-emerald-50/60 border border-emerald-200/60 shadow-2xs">
+            <span className="text-[10px] text-emerald-700 font-bold uppercase block truncate">Cash Sales (Orders)</span>
+            <p className="text-sm font-bold text-emerald-700 mt-0.5">+₹{summary?.todayCashSales ?? 0}</p>
           </div>
           <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-            <span className="text-[10px] text-rose-600 font-semibold uppercase block truncate">Today Out</span>
-            <p className="text-sm font-bold text-rose-600 mt-0.5">-₹{summary?.todayOut ?? 0}</p>
+            <span className="text-[10px] text-slate-500 font-bold uppercase block truncate">Petty In / Out</span>
+            <p className="text-sm font-bold text-slate-700 mt-0.5">
+              <span className="text-emerald-600">+{summary?.todayIn ?? 0}</span> / <span className="text-rose-600">-{summary?.todayOut ?? 0}</span>
+            </p>
           </div>
-          <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-            <span className="text-[10px] text-slate-500 font-bold uppercase block truncate">Current Balance</span>
-            <p className="text-sm font-bold text-slate-900 mt-0.5">₹{summary?.currentBalance ?? 0}</p>
+          <div className="p-2 rounded-xl bg-slate-900 text-white shadow-2xs">
+            <span className="text-[10px] text-amber-400 font-bold uppercase block truncate">Drawer Balance</span>
+            <p className="text-sm font-bold text-white mt-0.5">₹{summary?.currentBalance ?? 0}</p>
           </div>
         </div>
 
@@ -199,7 +201,7 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
             }`}
           >
             <Clock size={13} />
-            <span>Recent Vouchers ({recentTransactions.length})</span>
+            <span>Recent History ({recentTransactions.length})</span>
           </button>
         </div>
 
@@ -340,33 +342,18 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
                 />
               </div>
 
-              {/* Vendor & Receipt Row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                    {type === "CASH_OUT" ? "Paid To / Vendor" : "Deposited By"}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={type === "CASH_OUT" ? "e.g. Local Dairy" : "e.g. Manager"}
-                    value={paidTo}
-                    onChange={(e) => setPaidTo(e.target.value)}
-                    className="w-full px-3 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                    Receipt / Voucher #
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. REC-1049"
-                    value={receiptRef}
-                    onChange={(e) => setReceiptRef(e.target.value)}
-                    className="w-full px-3 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
+              {/* Vendor Row */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  {type === "CASH_OUT" ? "Paid To / Vendor" : "Deposited By"}
+                </label>
+                <input
+                  type="text"
+                  placeholder={type === "CASH_OUT" ? "e.g. Local Dairy" : "e.g. Manager"}
+                  value={paidTo}
+                  onChange={(e) => setPaidTo(e.target.value)}
+                  className="w-full px-3 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none"
+                />
               </div>
 
               {/* Action Buttons (Cancel / Submit) */}
@@ -404,7 +391,7 @@ export default function PettyCashModal({ isOpen, onClose, activeCounter = "Count
               {recentTransactions.length === 0 ? (
                 <div className="py-8 text-center text-slate-400">
                   <Receipt size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-xs font-semibold">No petty cash vouchers recorded yet</p>
+                  <p className="text-xs font-semibold">No petty cash transactions recorded yet</p>
                 </div>
               ) : (
                 recentTransactions.map((tx) => {

@@ -28,6 +28,7 @@ import LeaveDashboard from "./pages/staff/LeaveDashboard";
 import AdminLeaveManagement from "./pages/staff/AdminLeaveManagement";
 import Expenses from "./pages/expenses/Expenses";
 import Payments from "./pages/payments/Payments";
+
 import Reports from "./pages/reports/Reports";
 
 const ROLE_HOME = {
@@ -95,12 +96,12 @@ export default function App() {
             <Route path="/admin/leaves" element={<AdminLeaveManagement />} />
             <Route path="/leaves" element={<AdminLeaveManagement />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/payments" element={<Payments />} />
           </Route>
 
           <Route element={<RoleRoute allowed={["OWNER", "MANAGER", "CASHIER"]} />}>
             <Route path="/customers" element={<Customers />} />
             <Route path="/expenses" element={<Expenses />} />
-            <Route path="/payments" element={<Payments />} />
           </Route>
         </Route>
       </Route>

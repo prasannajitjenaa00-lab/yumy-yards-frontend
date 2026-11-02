@@ -11,6 +11,7 @@
     Truck,
     Users,
     Wallet,
+    Banknote,
     BarChart3,
     Settings,
     LogOut,
@@ -61,6 +62,7 @@
       { to: "/staff/leave", label: "My Leave", icon: Coffee },
       { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
       { to: "/expenses", label: "Expenses", icon: Wallet },
+
       { to: "/reports", label: "Reports", icon: BarChart3 },
       { to: "/owner/settings", label: "Settings", icon: Settings },
       { to: "/owner/audit-logs", label: "Audit Logs", icon: ShieldCheck },
@@ -80,6 +82,7 @@
       { to: "/staff/leave", label: "My Leave", icon: Coffee },
       { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
       { to: "/expenses", label: "Expenses", icon: Wallet },
+
       { to: "/reports", label: "Reports", icon: BarChart3 },
     ],
     CASHIER: [
@@ -87,7 +90,6 @@
       { to: "/kitchen", label: "Kitchen Display", icon: ChefHat },
       { to: "/orders", label: "Orders", icon: ClipboardList },
       { to: "/customers", label: "Customers", icon: Users },
-      { to: "/payments", label: "Payments", icon: Wallet },
       { to: "/staff/attendance", label: "Attendance", icon: Clock },
       { to: "/staff/leave", label: "My Leave", icon: Coffee },
       { to: "/staff/holidays", label: "Holiday & Off Days", icon: CalendarDays },
